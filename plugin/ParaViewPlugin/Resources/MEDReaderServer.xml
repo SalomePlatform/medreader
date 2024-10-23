@@ -527,27 +527,5 @@
         <ShowInMenu category="Mechanics" />
       </Hints>
     </SourceProxy>
-
-    <SourceProxy
-      name="GenerateStructuralElement"
-      class="vtkGenerateStructElement"
-      label="Generate Structural Element">
-
-     <InputProperty
-        name="Input"
-        command="SetInputConnection">
-           <ProxyGroupDomain name="groups">
-             <Group name="sources"/>
-             <Group name="filters"/>
-           </ProxyGroupDomain>
-           <DataTypeDomain name="input_type">
-             <DataType value="vtkUnstructuredGrid"/>
-           </DataTypeDomain>
-           <Documentation>
-             This property specifies the input to the Generate Structural Element filter.
-           </Documentation>
-     </InputProperty>
-
-    </SourceProxy>
   </ProxyGroup>
 </ServerManagerConfiguration>
