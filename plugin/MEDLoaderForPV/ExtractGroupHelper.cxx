@@ -150,7 +150,7 @@ void ExtractGroupInternal::loadFrom(vtkMutableDirectedGraph *sil)
   while(it0->HasNext())
     {
       vtkIdType id1(it0->Next());
-      std::string meshName((const char *)verticesNames2->GetValue(id1));
+      std::string meshName(verticesNames2->GetValue(id1).c_str());
       this->_mesh_name=meshName;
       vtkAdjacentVertexIterator *it1(vtkAdjacentVertexIterator::New());
       sil->GetAdjacentVertices(id1,it1);
@@ -160,14 +160,14 @@ void ExtractGroupInternal::loadFrom(vtkMutableDirectedGraph *sil)
       while(itGrps->HasNext())
         {
           vtkIdType idg(itGrps->Next());
-          ExtractGroupGrp grp((const char *)verticesNames2->GetValue(idg));
+          ExtractGroupGrp grp(verticesNames2->GetValue(idg).c_str());
           vtkAdjacentVertexIterator *itGrps2(vtkAdjacentVertexIterator::New());
           sil->GetAdjacentVertices(idg,itGrps2);
           std::vector<std::string> famsOnGroup;
           while(itGrps2->HasNext())
             {
               vtkIdType idgf(itGrps2->Next());
-              famsOnGroup.push_back(std::string((const char *)verticesNames2->GetValue(idgf)));
+              famsOnGroup.push_back(std::string(verticesNames2->GetValue(idgf)).c_str());
             }
           grp.setFamilies(famsOnGroup);
           itGrps2->Delete();
@@ -181,7 +181,7 @@ void ExtractGroupInternal::loadFrom(vtkMutableDirectedGraph *sil)
       while(itFams->HasNext())
         {
           vtkIdType idf(itFams->Next());
-          ExtractGroupFam fam((const char *)verticesNames2->GetValue(idf));
+          ExtractGroupFam fam(verticesNames2->GetValue(idf).c_str());
           _fams.push_back(fam);
         }
       itFams->Delete();

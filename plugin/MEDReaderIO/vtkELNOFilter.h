@@ -22,6 +22,8 @@
 
 #include "vtkQuadraturePointsGenerator.h"
 
+class vtkCellData;
+
 class VTK_EXPORT vtkELNOFilter: public vtkQuadraturePointsGenerator
 {
 public:

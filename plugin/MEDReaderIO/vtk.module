@@ -8,6 +8,7 @@ DEPENDS
   ParaView::VTKExtensionsIOCore
 PRIVATE_DEPENDS
   VTK::IOLegacy
+  VTK::FiltersParallelDIY2
   ParaView::VTKExtensionsFiltersRendering
   ParaView::VTKExtensionsFiltersGeneral
   ParaView::VTKExtensionsMisc

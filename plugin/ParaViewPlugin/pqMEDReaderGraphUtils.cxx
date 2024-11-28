@@ -44,15 +44,15 @@ void getCurrentTS(vtkGraph* graph, vtkIdType id, QStringList& dts, QStringList& 
     // Each Time Step
     // Recover step
     tmp = tree->GetChild(tsr, i);
-    dts << QString(names->GetValue(tmp));
+    dts << QString(names->GetValue(tmp).c_str());
 
     // Recover mode
     tmp = tree->GetChild(tmp, 0);
-    its << QString(names->GetValue(tmp));
+    its << QString(names->GetValue(tmp).c_str());
 
     // Recover value
     tmp = tree->GetChild(tmp, 0);
-    tts << QString(names->GetValue(tmp));
+    tts << QString(names->GetValue(tmp).c_str());
     }
 }
 

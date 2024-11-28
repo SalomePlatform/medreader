@@ -112,7 +112,7 @@ if ROSETTE :
 
      Display1=Show()
 
-     PVLookupTable1 = GetLookupTableForArray( T1, NB_CMP, VectorMode = 'Component',VectorComponent=NB_CMP-1, NumberOfTableValues=2, RGBPoints=[-MAX_CMP, 0.0, 0.0, 1.0, MAX_CMP, 1.0, 0.0, 0.0], AutomaticRescaleRangeMode=-1, ScalarRangeInitialized = 1.0)
+     PVLookupTable1 = GetColorTransferFunction( T1, VectorMode = 'Component',VectorComponent=NB_CMP-1, NumberOfTableValues=2, RGBPoints=[-MAX_CMP, 0.0, 0.0, 1.0, MAX_CMP, 1.0, 0.0, 0.0], AutomaticRescaleRangeMode=-1, ScalarRangeInitialized = 1.0)
      
      scalarbar1 = CreateScalarBar(Title =T1, ComponentTitle = NOM_CMP, LookupTable=PVLookupTable1, TitleFontSize=12 , LabelFontSize=12, TitleColor=[0.0,0.0,0.0],LabelColor=[0.0,0.0,0.0])
 
@@ -146,7 +146,7 @@ if ROSETTE :
 
      Display2=Show()
 
-     PVLookupTable2 = GetLookupTableForArray( T2, NB_CMP, VectorMode = 'Component',VectorComponent=NB_CMP-1, NumberOfTableValues=2, RGBPoints=[-MAX_CMP, 0.0, 0.0, 1.0, MAX_CMP, 1.0, 0.0, 0.0], AutomaticRescaleRangeMode=-1)
+     PVLookupTable2 = GetColorTransferFunction( T2, VectorMode = 'Component',VectorComponent=NB_CMP-1, NumberOfTableValues=2, RGBPoints=[-MAX_CMP, 0.0, 0.0, 1.0, MAX_CMP, 1.0, 0.0, 0.0], AutomaticRescaleRangeMode=-1)
      scalarbar2 = CreateScalarBar(Title =T2, ComponentTitle = NOM_CMP, LookupTable=PVLookupTable2, TitleFontSize=12 , LabelFontSize=12,TitleColor=[0.0,0.0,0.0],LabelColor=[0.0,0.0,0.0])
      #view2.Representations.append(scalarbar2)
      Display2.ColorArrayName = T2

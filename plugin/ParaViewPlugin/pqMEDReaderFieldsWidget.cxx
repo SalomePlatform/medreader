@@ -90,9 +90,9 @@ void pqMEDReaderFieldsWidget::loadTreeWidgetItems()
     vtkIdType tsId = tree->GetChild(fst, i - 1);
     pqTreeWidgetItemObject *ts = new pqTreeWidgetItemObject(this->TreeWidget, QStringList());
     this->NItems++;
-    QString tsxName = QString(names->GetValue(tsxId));
+    QString tsxName = QString(names->GetValue(tsxId).c_str());
     ts->setText(0, tsxName);
-    ts->setData(0, Qt::ToolTipRole, QString(names->GetValue(tsId)));
+    ts->setData(0, Qt::ToolTipRole, QString(names->GetValue(tsId).c_str()));
 
     // MAIL Node
     for (int maili = 0; maili < tree->GetNumberOfChildren(tsxId); maili++)
@@ -100,9 +100,9 @@ void pqMEDReaderFieldsWidget::loadTreeWidgetItems()
       vtkIdType mailId = tree->GetChild(tsxId, maili);
       pqTreeWidgetItemObject *mail = new pqTreeWidgetItemObject(ts, QStringList());
       this->NItems++;
-      QString mailName = QString(names->GetValue(mailId));
+      QString mailName = QString(names->GetValue(mailId).c_str());
       mail->setText(0, mailName);
-      mail->setData(0, Qt::ToolTipRole, QString(names->GetValue(mailId)));
+      mail->setData(0, Qt::ToolTipRole, QString(names->GetValue(mailId).c_str()));
 
       QString propertyBaseName = tsxName + "/" + mailName + "/";
 
@@ -112,16 +112,16 @@ void pqMEDReaderFieldsWidget::loadTreeWidgetItems()
         vtkIdType comSupId = tree->GetChild(mailId, comsupi);
         pqTreeWidgetItemObject *comsup = new pqTreeWidgetItemObject(mail, QStringList());
         this->NItems++;
-        QString comsupName = QString(names->GetValue(comSupId));
+        QString comsupName = QString(names->GetValue(comSupId).c_str());
         comsup->setText(0, comsupName);
 
         // ComSup tooltip
         vtkIdType geoTypeId = tree->GetChild(comSupId, 1);
-        QString comSupToolTipName(names->GetValue(comSupId));
+        QString comSupToolTipName(names->GetValue(comSupId).c_str());
         for (int geoi = 0; geoi < tree->GetNumberOfChildren(geoTypeId); geoi++)
           {
           comSupToolTipName += QString("\n- %1").arg(
-            QString(names->GetValue(tree->GetChild(geoTypeId, geoi))));
+            QString(names->GetValue(tree->GetChild(geoTypeId, geoi)).c_str()));
           }
         comsup->setData(0, Qt::ToolTipRole, comSupToolTipName);
 

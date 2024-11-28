@@ -95,7 +95,7 @@ def test(baseline_file):
         DataRepresentation4.SelectionPointFieldDataArrayName = 'fGauss'
         DataRepresentation4.ScaleFactor = 0.3182729169726372
 
-        a1_fGauss_PVLookupTable = GetLookupTableForArray( "fGauss", 1, RGBPoints=[0.22, 0.23, 0.299, 0.754, 2.95, 0.706, 0.016, 0.15], VectorMode='Magnitude', NanColor=[0.25, 0.0, 0.0], ColorSpace='Diverging', ScalarRangeInitialized=1.0, AllowDuplicateScalars=1 )
+        a1_fGauss_PVLookupTable = GetColorTransferFunction( "fGauss", RGBPoints=[0.22, 0.23, 0.299, 0.754, 2.95, 0.706, 0.016, 0.15], VectorMode='Magnitude', NanColor=[0.25, 0.0, 0.0], ColorSpace='Diverging', ScalarRangeInitialized=1.0, AllowDuplicateScalars=1 )
         a1_fGauss_PiecewiseFunction = CreatePiecewiseFunction( Points=[0.0, 0.0, 0.5, 0.0, 1.0, 1.0, 0.5, 0.0] )
         DataRepresentation4.ColorArrayName = 'fGauss'
         DataRepresentation4.LookupTable = a1_fGauss_PVLookupTable

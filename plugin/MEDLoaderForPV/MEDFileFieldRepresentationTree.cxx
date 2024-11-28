@@ -47,6 +47,7 @@
 #include "vtkDoubleArray.h"
 #include "vtkIntArray.h"
 #include "vtkLongArray.h"
+#include "vtkNew.h"
 #ifdef WIN32
 #include "vtkLongLongArray.h"
 #endif
@@ -728,48 +729,48 @@ void MEDFileFieldRepresentationLeaves::appendFields(const MEDTimeReq *tr, const 
 
 vtkUnstructuredGrid *MEDFileFieldRepresentationLeaves::buildVTKInstanceNoTimeInterpolationUnstructured(MEDUMeshMultiLev *mm) const
 {
-  DataArrayDouble *coordsMC(0);
-  DataArrayByte *typesMC(0);
-  DataArrayIdType *cellLocationsMC(0),*cellsMC(0),*faceLocationsMC(0),*facesMC(0);
-  bool statusOfCoords(mm->buildVTUArrays(coordsMC,typesMC,cellLocationsMC,cellsMC,faceLocationsMC,facesMC));
-  MCAuto<DataArrayDouble> coordsSafe(coordsMC);
-  MCAuto<DataArrayByte> typesSafe(typesMC);
-  MCAuto<DataArrayIdType> cellLocationsSafe(cellLocationsMC),cellsSafe(cellsMC),faceLocationsSafe(faceLocationsMC),facesSafe(facesMC);
+  MCAuto<DataArrayDouble> coordsSafe;
+  MCAuto<DataArrayByte> typesSafe;
+  MCAuto<DataArrayIdType> cellLocationsSafe,cellsSafe,faceLocationsOffsetSafe,faceLocationsConnSafe,facesOffsetSafe,facesConnSafe;
+  bool statusOfCoords(mm->buildVTUArrays94(
+    coordsSafe,typesSafe,cellLocationsSafe,cellsSafe,
+    faceLocationsOffsetSafe,faceLocationsConnSafe,facesOffsetSafe,facesConnSafe
+  ));
   //
   vtkIdType nbOfCells(typesSafe->getNbOfElems());
   vtkUnstructuredGrid *ret(vtkUnstructuredGrid::New());
-  vtkUnsignedCharArray *cellTypes(vtkUnsignedCharArray::New());
+  vtkNew<vtkUnsignedCharArray> cellTypes;
   AssignDataPointerOther<vtkUnsignedCharArray,DataArrayByte>(cellTypes,typesSafe,nbOfCells);
-  vtkIdTypeArray *cellLocations(vtkIdTypeArray::New());
+  vtkNew<vtkIdTypeArray> cellLocations;
   AssignDataPointerOther<vtkIdTypeArray,DataArrayIdType>(cellLocations,cellLocationsSafe,nbOfCells);
-  vtkCellArray *cells(vtkCellArray::New());
-  vtkIdTypeArray *cells2(vtkIdTypeArray::New());
+  vtkNew<vtkCellArray> cells;
+  vtkNew<vtkIdTypeArray> cells2;
   AssignDataPointerOther<vtkIdTypeArray,DataArrayIdType>(cells2,cellsSafe,cellsSafe->getNbOfElems());
   cells->SetCells(nbOfCells,cells2);
-  cells2->Delete();
-  if(faceLocationsMC!=0 && facesMC!=0)
+  if(faceLocationsOffsetSafe.isNotNull())
     {
-      vtkIdTypeArray *faces(vtkIdTypeArray::New());
-      AssignDataPointerOther<vtkIdTypeArray,DataArrayIdType>(faces,facesSafe,facesSafe->getNbOfElems());
-      vtkIdTypeArray *faceLocations(vtkIdTypeArray::New());
-      AssignDataPointerOther<vtkIdTypeArray,DataArrayIdType>(faceLocations,faceLocationsSafe,faceLocationsSafe->getNbOfElems());
-      ret->SetCells(cellTypes,cellLocations,cells,faceLocations,faces);
-      faceLocations->Delete();
-      faces->Delete();
+      vtkNew<vtkIdTypeArray> faceLocationsOffset;
+      AssignDataPointerOther<vtkIdTypeArray,DataArrayIdType>(faceLocationsOffset,faceLocationsOffsetSafe,faceLocationsOffsetSafe->getNbOfElems());
+      vtkNew<vtkIdTypeArray> faceLocationsConn;
+      AssignDataPointerOther<vtkIdTypeArray,DataArrayIdType>(faceLocationsConn,faceLocationsConnSafe,faceLocationsConnSafe->getNbOfElems());
+      vtkNew<vtkIdTypeArray> facesOffset;
+      AssignDataPointerOther<vtkIdTypeArray,DataArrayIdType>(facesOffset,facesOffsetSafe,facesOffsetSafe->getNbOfElems());
+      vtkNew<vtkIdTypeArray> facesConn;
+      AssignDataPointerOther<vtkIdTypeArray,DataArrayIdType>(facesConn,facesConnSafe,facesConnSafe->getNbOfElems());
+      vtkNew<vtkCellArray> zeFaceLocations;
+      zeFaceLocations->SetData(faceLocationsOffset,faceLocationsConn);
+      vtkNew<vtkCellArray> zeFaces;
+      zeFaces->SetData(facesOffset,facesConn);
+      ret->SetPolyhedralCells(cellTypes,cells,zeFaceLocations,zeFaces);
     }
   else
-    ret->SetCells(cellTypes,cellLocations,cells);
-  cellTypes->Delete();
-  cellLocations->Delete();
-  cells->Delete();
-  vtkPoints *pts(vtkPoints::New());
-  vtkDoubleArray *pts2(vtkDoubleArray::New());
+    ret->SetCells(cellTypes,cells);
+  vtkNew<vtkPoints> pts;
+  vtkNew<vtkDoubleArray> pts2;
   pts2->SetNumberOfComponents(3);
   AssignDataPointerToVTK<double>(pts2,coordsSafe,statusOfCoords);
   pts->SetData(pts2);
-  pts2->Delete();
   ret->SetPoints(pts);
-  pts->Delete();
   //
   return ret;
 }

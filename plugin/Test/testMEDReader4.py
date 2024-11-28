@@ -88,7 +88,7 @@ def test(baseline_file):
   DataRepresentation1.SelectionPointFieldDataArrayName = 'f0NoPfl'
   DataRepresentation1.ScaleFactor = 0.3
   DataRepresentation1.ColorArrayName = 'f0NoPfl'
-  lookupTable = GetLookupTableForArray( "f0NoPfl", 1, RGBPoints=[0.0, 0.23, 0.299, 0.754, 4.0, 0.706, 0.016, 0.15], VectorMode='Magnitude', NanColor=[0.25, 0.0, 0.0], ColorSpace='Diverging', ScalarRangeInitialized=1.0, AllowDuplicateScalars=1 )
+  lookupTable = GetColorTransferFunction( "f0NoPfl", RGBPoints=[0.0, 0.23, 0.299, 0.754, 4.0, 0.706, 0.016, 0.15], VectorMode='Magnitude', NanColor=[0.25, 0.0, 0.0], ColorSpace='Diverging', ScalarRangeInitialized=1.0, AllowDuplicateScalars=1 )
   function=CreatePiecewiseFunction(Points=[0.0,0.0,0.5,0.0,1.0,1.0,0.5,0.0] )
   lookupTable.ScalarOpacityFunction = function
   DataRepresentation1.LookupTable = lookupTable

@@ -90,7 +90,7 @@ def test(baseline_file):
     wbv.ScaleFactor=0.1
     wbv.Vectors=['POINTS','f3NbComp4_Vector']
     print( list(wbv.PointData.keys()) )
-    assert(list(wbv.PointData.keys())==['f0NbComp1','f1NbComp2','f1NbComp2_Vector','f2NbComp3','f3NbComp4','f3NbComp4_Vector','vtkGhostType'])
+    assert(list(wbv.PointData.keys())==['f0NbComp1', 'f1NbComp2', 'f2NbComp3', 'f3NbComp4', 'f1NbComp2_Vector', 'f3NbComp4_Vector', 'vtkGhostType'])
     #
     DataRepresentation2 = Show()
     DataRepresentation2.EdgeColor = [0.0, 0.0, 0.5000076295109483]
@@ -102,7 +102,7 @@ def test(baseline_file):
     DataRepresentation1.Visibility = 0
     DataRepresentation1.ColorArrayName = ('POINT_DATA', '')
     DataRepresentation1.Visibility = 1
-    a4_f3NbComp4_PVLookupTable = GetLookupTableForArray( "f3NbComp4", 4, RGBPoints=[1.118033988749895, 0.23, 0.299, 0.754, 8.108851429645696, 0.865, 0.865, 0.865, 15.0996688705415, 0.706, 0.016, 0.15], VectorMode='Magnitude', NanColor=[0.25, 0.0, 0.0], ColorSpace='Diverging', ScalarRangeInitialized=1.0 )
+    a4_f3NbComp4_PVLookupTable = GetColorTransferFunction( "f3NbComp4", RGBPoints=[1.118033988749895, 0.23, 0.299, 0.754, 8.108851429645696, 0.865, 0.865, 0.865, 15.0996688705415, 0.706, 0.016, 0.15], VectorMode='Magnitude', NanColor=[0.25, 0.0, 0.0], ColorSpace='Diverging', ScalarRangeInitialized=1.0 )
     a4_f3NbComp4_PiecewiseFunction = CreatePiecewiseFunction( Points=[1.118033988749895, 0.0, 0.5, 0.0, 15.0996688705415, 1.0, 0.5, 0.0] )
     DataRepresentation1.ScalarOpacityFunction = a4_f3NbComp4_PiecewiseFunction
     DataRepresentation1.LookupTable = a4_f3NbComp4_PVLookupTable

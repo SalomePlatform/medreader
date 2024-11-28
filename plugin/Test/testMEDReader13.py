@@ -76,7 +76,7 @@ def test(baseline_file):
     #DataRepresentation2.RadiusRange = [6.66667e-05, 1.99993]
     DataRepresentation2.ColorArrayName = ('POINT_DATA', 'fieldELNO_Vector')
 
-    a3_fieldELNO_Vector_PVLookupTable = GetLookupTableForArray( "fieldELNO_Vector", 3, RGBPoints=[0.3464101615137755, 0.23, 0.299, 0.754, 1.1258330249197703, 0.865, 0.865, 0.865, 1.9052558883257653, 0.706, 0.016, 0.15], VectorMode='Magnitude', NanColor=[0.25, 0.0, 0.0], ColorSpace='Diverging', ScalarRangeInitialized=1.0 )
+    a3_fieldELNO_Vector_PVLookupTable = GetColorTransferFunction( "fieldELNO_Vector", RGBPoints=[0.3464101615137755, 0.23, 0.299, 0.754, 1.1258330249197703, 0.865, 0.865, 0.865, 1.9052558883257653, 0.706, 0.016, 0.15], VectorMode='Magnitude', NanColor=[0.25, 0.0, 0.0], ColorSpace='Diverging', ScalarRangeInitialized=1.0 )
 
     a3_fieldELNO_Vector_PiecewiseFunction = CreatePiecewiseFunction( Points=[0.3464101615137755, 0.0, 0.5, 0.0, 1.9052558883257653, 1.0, 0.5, 0.0] )
 

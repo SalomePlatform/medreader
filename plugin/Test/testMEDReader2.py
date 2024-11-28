@@ -91,7 +91,7 @@ def test(baseline_file):
   DataRepresentation5.EdgeColor = [0.0, 0.0, 0.5000076295109483]
   DataRepresentation5.SelectionCellFieldDataArrayName = 'FamilyIdCell'
   DataRepresentation5.ScaleFactor = 0.6
-  a2_ACellField_PVLookupTable=GetLookupTableForArray( "ACellField", 2, RGBPoints=[10.63014581273465, 0.23, 0.299, 0.754, 15.0, 0.706, 0.016, 0.15], VectorMode='Magnitude', NanColor=[0.25, 0.0, 0.0], ColorSpace='Diverging', ScalarRangeInitialized=1.0, AllowDuplicateScalars=1 )
+  a2_ACellField_PVLookupTable=GetColorTransferFunction( "ACellField", RGBPoints=[10.63014581273465, 0.23, 0.299, 0.754, 15.0, 0.706, 0.016, 0.15], VectorMode='Magnitude', NanColor=[0.25, 0.0, 0.0], ColorSpace='Diverging', ScalarRangeInitialized=1.0, AllowDuplicateScalars=1 )
   a2_ACellField_PiecewiseFunction=CreatePiecewiseFunction( Points=[0.0, 0.0, 0.5, 0.0, 1.0, 1.0, 0.5, 0.0] )
   a2_ACellField_PVLookupTable.ScalarOpacityFunction = a2_ACellField_PiecewiseFunction
   DataRepresentation5.ScalarOpacityFunction = a2_ACellField_PiecewiseFunction

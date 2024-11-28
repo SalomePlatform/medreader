@@ -23,14 +23,15 @@
 #include "MEDFileFieldRepresentationTree.hxx"
 
 //VTK includes
-#include <vtkObjectFactory.h>
-#include <vtkInformation.h>
-#include <vtkInformationVector.h>
-#include <vtkUnstructuredGrid.h>
 #include <vtkCellData.h>
-#include <vtkPointData.h>
+#include <vtkInformation.h>
 #include <vtkInformationQuadratureSchemeDefinitionVectorKey.h>
+#include <vtkInformationVector.h>
+#include <vtkObjectFactory.h>
+#include <vtkPointData.h>
+#include <vtkPolyData.h>
 #include <vtkQuadratureSchemeDefinition.h>
+#include <vtkUnstructuredGrid.h>
 
 //-----------------------------------------------------------------------------
 vtkStandardNewMacro(vtkMEDQuadraturePointsGenerator)
