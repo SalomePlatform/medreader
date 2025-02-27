@@ -155,7 +155,7 @@ vtkIdTypeArray *ELGACmp::createNew(const MEDCoupling::MEDFileFieldGlobsReal *glo
           else
             {
               for(int j=0;j<27;j++)
-                shape[nbPtsPerCell*i+j]=pt0[MEDMeshMultiLev::HEXA27_PERM_ARRAY[j]];
+                shape[nbPtsPerCell*i+j]=pt0[MEDCoupling1GTUMesh::HEXA27_PERM_ARRAY[j]];
             }
         }
       m[vtkType]=nbGaussPt;
