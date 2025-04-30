@@ -94,7 +94,7 @@ def test0(baseline_file):
     myMedReader.UpdatePipeline()
     myMedReader.FieldsStatus = ['TS0/mesh/ComSup0/SolutionDEPL@@][@@P1', 'TS0/mesh/ComSup0/SolutionSIEF_ELGA@@][@@GAUSS', 'TS0/mesh/ComSup0/SolutionSIEQ_ELNO@@][@@GSSNE', 'TS0/mesh/ComSup0/mesh@@][@@P0']
     myMedReader.UpdatePipeline()
-    assert(myMedReader.CellData.GetNumberOfArrays()==4)
+    assert(myMedReader.CellData.GetNumberOfArrays()==5) # vtkGhostType
 
     keys=myMedReader.GetProperty("FieldsTreeInfo")[::2]
     # list all the names of arrays that can be seen (including their spatial discretization)
@@ -118,10 +118,10 @@ def test0(baseline_file):
         DataRepresentation3.SelectionPointFieldDataArrayName = 'SolutionSIEF_ELNO'
         a2_SolutionSIEQ_ELNO_PiecewiseFunction = CreatePiecewiseFunction(Points=[0.0, 0.0, 0.5, 0.0, 1.0, 1.0, 0.5, 0.0])
         #VectorMode='Magnitude' or VectorMode='Component'
-        #a2_SolutionSIEQ_ELNO_PVLookupTable = GetLookupTableForArray("SolutionSIEQ_ELNO",2,RGBPoints=[0.0, 0.23, 0.299, 0.754, 239013.7773476667, 0.706, 0.016, 0.15], VectorMode='Component', VectorComponent=1, NanColor=[0.25, 0.0, 0.0], ColorSpace='Diverging', ScalarRangeInitialized=1.0, AllowDuplicateScalars=1 )
+        a2_SolutionSIEQ_ELNO_PVLookupTable = GetColorTransferFunction("SolutionSIEQ_ELNO",RGBPoints=[0.0, 0.23, 0.299, 0.754, 239013.7773476667, 0.706, 0.016, 0.15], VectorMode='Component', VectorComponent=1, NanColor=[0.25, 0.0, 0.0], ColorSpace='Diverging', ScalarRangeInitialized=1.0, AllowDuplicateScalars=1 )
         DataRepresentation3.ScalarOpacityFunction = a2_SolutionSIEQ_ELNO_PiecewiseFunction
         DataRepresentation3.ColorArrayName = 'SolutionSIEQ_ELNO'
-        #DataRepresentation3.LookupTable = a2_SolutionSIEQ_ELNO_PVLookupTable
+        DataRepresentation3.LookupTable = a2_SolutionSIEQ_ELNO_PVLookupTable
         DataRepresentation3.Visibility = 1
         #
         ELGAfieldToPointGaussian1=ELGAfieldToPointGaussian(Input=ELNOfieldToSurface1)
@@ -137,7 +137,7 @@ def test0(baseline_file):
         RenderView1.CameraFocalPoint = [1.0170565790969026e-18, 0.0599999981932342, 0.022500000894069675]
         RenderView1.ViewSize =[300,300]
         Render()
-        #SaveScreenshot(filename='testMEDReader0.png', viewOrLayout=RenderView1, ImageResolution=[300,300])#location=16
+
         # compare with baseline image
         import vtk.test.Testing
         from vtk.util.misc import vtkGetTempDir
