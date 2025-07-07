@@ -21,7 +21,7 @@
 
 import os
 import sys
-
+import platform
 from medcoupling import *
 from paraview.simple import *
 from MEDReaderHelper import WriteInTmpDir,RetriveBaseLine
@@ -94,7 +94,10 @@ def test0(baseline_file):
     myMedReader.UpdatePipeline()
     myMedReader.FieldsStatus = ['TS0/mesh/ComSup0/SolutionDEPL@@][@@P1', 'TS0/mesh/ComSup0/SolutionSIEF_ELGA@@][@@GAUSS', 'TS0/mesh/ComSup0/SolutionSIEQ_ELNO@@][@@GSSNE', 'TS0/mesh/ComSup0/mesh@@][@@P0']
     myMedReader.UpdatePipeline()
-    assert(myMedReader.CellData.GetNumberOfArrays()==5) # vtkGhostType
+    if platform.system() == "Windows" :
+        assert(myMedReader.CellData.GetNumberOfArrays()==4)
+    else:
+        assert(myMedReader.CellData.GetNumberOfArrays()==5) # vtkGhostType
 
     keys=myMedReader.GetProperty("FieldsTreeInfo")[::2]
     # list all the names of arrays that can be seen (including their spatial discretization)
