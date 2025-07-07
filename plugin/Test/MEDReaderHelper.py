@@ -21,12 +21,16 @@
 
 def WriteInTmpDir(func):
     def decoratedFunc(*args,**kwargs):
-        import tempfile,os
+        import tempfile,os,platform
         ret = None
+        currentDir = os.getcwd()
         with tempfile.TemporaryDirectory() as tmpdirname:
             os.chdir(tmpdirname)
             ret = func(*args,**kwargs)
-            pass
+            # On Windows, if one deletes the temporary directory while busy
+            # with it, it raises an error. So we change back to the original
+            if platform.system() == "Windows" :
+                os.chdir(currentDir)
         return ret
     return decoratedFunc
 
