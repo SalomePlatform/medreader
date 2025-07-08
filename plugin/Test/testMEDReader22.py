@@ -24,6 +24,7 @@ __doc__ = """
 Test of GroupsAsMultiBlocks filter in the MEDReader plugin.
 """
 
+import platform
 from paraview.simple import *
 paraview.simple._DisableFirstRenderCameraReset()
 from vtk.util import numpy_support
