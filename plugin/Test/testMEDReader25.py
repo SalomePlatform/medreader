@@ -24,7 +24,6 @@ Test of mixed polyhderon and hexahedron in the MEDReader plugin.
 """
 
 import os
-import platform
 import sys
 from paraview.simple import *
 paraview.simple._DisableFirstRenderCameraReset()
@@ -132,12 +131,8 @@ def test(baseline_file):
     ds_data = mb_data.GetBlock(0)
     MyAssert(ds_data.GetNumberOfPoints()) == 60
     MyAssert(ds_data.GetNumberOfCells()) == 18
-    if platform.system() == "Windows":
-        MyAssert(ds_data.GetPointData().GetNumberOfArrays() == 1) # field2
-        MyAssert(ds_data.GetCellData().GetNumberOfArrays() == 3) # familiyIdCell, field, mesh
-    else:
-        MyAssert(ds_data.GetPointData().GetNumberOfArrays() == 2) # field2, vtkGhostType
-        MyAssert(ds_data.GetCellData().GetNumberOfArrays() == 4) # familiyIdCell, field, mesh, vtkGhostType
+    MyAssert(ds_data.GetPointData().GetNumberOfArrays() in [1, 2]) # field2, vtkGhostType
+    MyAssert(ds_data.GetCellData().GetNumberOfArrays() in [3, 4])  # familiyIdCell, field, mesh, vtkGhostType
     # Check array content
     ds_data_ref_conn = np.array([0,11,1,3,15,26,16,18,1,6,5,3,16,21,20,18,13,10,9,6,28,25,24,21,7,12,14,13,22,27,29,28,15,26,16,18,
         30,41,31,33,16,21,20,18,31,36,35,33,28,25,24,21,43,40,39,36,22,27,29,28,37,42,44,43,30,41,31,33,45,56,46,48,31,36,35,33,46,

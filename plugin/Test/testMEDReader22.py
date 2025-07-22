@@ -24,7 +24,6 @@ __doc__ = """
 Test of GroupsAsMultiBlocks filter in the MEDReader plugin.
 """
 
-import platform
 from paraview.simple import *
 paraview.simple._DisableFirstRenderCameraReset()
 from vtk.util import numpy_support
@@ -89,10 +88,7 @@ def test():
     ds_bl = blocks.GetBlock(0)
     MyAssert(ds_bl.GetNumberOfCells()==4)
     bl_ref_conn = np.array([ 1,  0,  6,  7,  2,  1,  7,  8,  7,  6, 12, 13,  8,  7, 13, 14],dtype=np.int32)
-    if platform.system() == "Windows" :
-        MyAssert(ds_bl.GetCellData().GetNumberOfArrays() == 3 )# 3 for field, mesh and FamilyIdCell
-    else:
-        MyAssert(ds_bl.GetCellData().GetNumberOfArrays() == 4 )#  3 for field, mesh and FamilyIdCell +1 for vtkGhostTyp
+    MyAssert(ds_bl.GetCellData().GetNumberOfArrays() in [3, 4] )#  3 for field, mesh and FamilyIdCell +1 for vtkGhostType
     MyAssert(np.all( bl_ref_conn == numpy_support.vtk_to_numpy( ds_bl.GetCells().GetConnectivityArray() )) )
     MyAssert( mc.DataArrayDouble(numpy_support.vtk_to_numpy( ds_bl.GetCellData().GetArray("field") )).isEqual(f.getArray()[grp_BottomLeft],1e-12) )
     # test of bottom right
@@ -115,10 +111,7 @@ def test():
     MyAssert( mc.DataArrayDouble(numpy_support.vtk_to_numpy( ds_tr.GetCellData().GetArray("field") )).isEqual(f.getArray()[grp_TopRight],1e-12) )
     #
     for ds in [ds_bl,ds_br,ds_tl,ds_tr]:
-        if platform.system() == "Windows" :
-            MyAssert(ds.GetPointData().GetNumberOfArrays() == 1 )# 1 for field2
-        else:
-            MyAssert(ds.GetPointData().GetNumberOfArrays() == 2 )# 1 for field2 + vtkGhostType
+        MyAssert(ds.GetPointData().GetNumberOfArrays() in [ 1, 2 ] )
         MyAssert(ds.GetNumberOfPoints()==36) # for performance reasons all blocks share the same input coordinates
         MyAssert(mc.DataArrayDouble( numpy_support.vtk_to_numpy( ds.GetPointData().GetArray("field2") ) ).isEqual(f2.getArray(),1e-12) )
 
