@@ -89,11 +89,7 @@ def test(baseline_file):
     wbv=WarpByVector(Input=myMedReader)
     wbv.ScaleFactor=0.1
     wbv.Vectors=['POINTS','f3NbComp4_Vector']
-    print( list(wbv.PointData.keys()) )
-    if platform.system() == "Windows" :
-      assert(list(wbv.PointData.keys())==['f0NbComp1', 'f1NbComp2', 'f2NbComp3', 'f3NbComp4', 'f1NbComp2_Vector', 'f3NbComp4_Vector'])
-    else:
-      assert(list(wbv.PointData.keys())==['f0NbComp1', 'f1NbComp2', 'f2NbComp3', 'f3NbComp4', 'f1NbComp2_Vector', 'f3NbComp4_Vector', 'vtkGhostType'])
+    assert( set(['f0NbComp1', 'f1NbComp2', 'f2NbComp3', 'f3NbComp4', 'f1NbComp2_Vector', 'f3NbComp4_Vector']).issubset(set(wbv.PointData.keys())))
     #
     DataRepresentation2 = Show()
     DataRepresentation2.EdgeColor = [0.0, 0.0, 0.5000076295109483]

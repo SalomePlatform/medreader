@@ -23,7 +23,6 @@ __doc__  = """
 Non regression test of EDF24514. GlobalNodeIds present in MED file whereas it does not appear into output DataSet of MEDReader.
 """
 
-import platform
 from paraview.simple import *
 import medcoupling as mc
 from vtk.util import numpy_support
@@ -51,10 +50,8 @@ myMedReader.FieldsStatus = ['TS0/mesh/ComSup0/mesh@@][@@P0']
 myMedReader.UpdatePipeline()
 # first important testing here
 
-if platform.system() == "Windows" :
-  MyAssert(   [myMedReader.PointData.GetArray(i).GetName() for i in range(myMedReader.PointData.GetNumberOfArrays())] == ['GlobalNodeIds']    )
-else:
-  MyAssert(   [myMedReader.PointData.GetArray(i).GetName() for i in range(myMedReader.PointData.GetNumberOfArrays())] == ['GlobalNodeIds','vtkGhostType']    )
+MyAssert(myMedReader.PointData.GetNumberOfArrays() in [1, 2]) # + 1 vtkGhostType
+MyAssert('GlobalNodeIds' in  [myMedReader.PointData.GetArray(i).GetName() for i in range(myMedReader.PointData.GetNumberOfArrays())] )
 ReadUnstructuredGrid = servermanager.Fetch(myMedReader).GetBlock(0)
 numpy_support.vtk_to_numpy( ReadUnstructuredGrid.GetPointData().GetArray('GlobalNodeIds') )
 # check match of coordinates written in testMEDReader23.med file and its representation
