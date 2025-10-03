@@ -169,8 +169,12 @@ void vtkMEDReader::ChangeMode(int newMode)
   if ( !this->Internal )
     return;
 
-  this->IsStdOrMode=newMode!=0;
-  this->Modified();
+  bool bNewMode = newMode!=0;
+  if (this->IsStdOrMode != bNewMode)
+  {
+    this->IsStdOrMode = bNewMode;
+    this->Modified();
+  }
 }
 
 void vtkMEDReader::GhostCellGeneratorCallForPara(int gcgcp)
@@ -210,8 +214,11 @@ void vtkMEDReader::SetFileName(const char *fname)
     return;
   try
     {
-      this->FileName=fname;
-      this->Modified();
+      if (this->FileName != fname)
+      {
+        this->FileName=fname;
+        this->Modified();
+      }
     }
   catch(INTERP_KERNEL::Exception& e)
     {
