@@ -117,8 +117,8 @@ int vtkFileSeriesGroupReader::RequestInformation(
 }
 
 //----------------------------------------------------------------------------
-int vtkFileSeriesGroupReader::RequestData(vtkInformation* vtkNotUsed(request),
-  vtkInformationVector** vtkNotUsed(inputVector), vtkInformationVector* outputVector)
+int vtkFileSeriesGroupReader::RequestData(vtkInformation* request,
+  vtkInformationVector** inputVector, vtkInformationVector* outputVector)
 {
   auto output = vtkMultiBlockDataSet::GetData(outputVector, 0);
   unsigned int nBlock = this->GetNumberOfFileNames();
@@ -136,11 +136,9 @@ int vtkFileSeriesGroupReader::RequestData(vtkInformation* vtkNotUsed(request),
   {
     // Make sure the information is up to date
     this->ReaderSetFileName(this->GetFileName(0));
-    this->Reader->UpdateInformation();
 
-    this->Reader->UpdateTimeStep(time);
-    vtkDataObject* outputReader = vtkMultiBlockDataSet::SafeDownCast(this->Reader->GetOutputDataObject(0))->GetBlock(0);
-    output->SetBlock(0, outputReader);
+    // Update the reader
+    this->Reader->ProcessRequest(request, inputVector, outputVector);
 
     // Copy the GAUSS_DATA info key
     vtkInformation* mInfo = this->Reader->GetOutputInformation(0);
@@ -159,11 +157,19 @@ int vtkFileSeriesGroupReader::RequestData(vtkInformation* vtkNotUsed(request),
     // without reloading everything.
     this->ReaderSetFileName(this->GetFileName(iProc));
     vtkMEDReader::SafeDownCast(this->Reader)->ReloadInternals();
-    this->Reader->UpdateInformation();
 
-    this->Reader->UpdateTimeStep(time);
-    vtkDataObject* outputReader = vtkMultiBlockDataSet::SafeDownCast(this->Reader->GetOutputDataObject(0))->GetBlock(0);
-    output->SetBlock(iProc, outputReader);
+    // Creating new output information.
+    vtkNew<vtkMultiBlockDataSet> mb;
+    vtkNew<vtkInformationVector> newOutInfoVec;
+    newOutInfoVec->Copy(outputVector, true);
+    vtkInformation* newOutInfo = newOutInfoVec->GetInformationObject(0);
+    newOutInfo->Set(vtkDataObject::DATA_OBJECT(), mb);
+
+    // Update the reader
+    this->Reader->ProcessRequest(request, inputVector, newOutInfoVec);
+
+    // Recover the output
+    output->SetBlock(iProc, mb->GetBlock(0));
 
     // Copy the GAUSS_DATA info key
     vtkInformation* mInfo = this->Reader->GetOutputInformation(0);
