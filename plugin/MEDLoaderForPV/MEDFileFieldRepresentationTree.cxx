@@ -287,7 +287,7 @@ void AssignDataPointerOther(VTKT *vtkTab, MCT *mcTab, vtkIdType nbElems)
 }
 
 template<class T>
-void AssignToFieldData(DataArray *vPtr, const MEDTimeReq *tr, vtkFieldData *att, const std::string& crudeName, bool noCpyNumNodes,
+void AssignToFieldData(MEDCoupling::DataArray *vPtr, const MEDTimeReq *tr, vtkFieldData *att, const std::string& crudeName, bool noCpyNumNodes,
                        const std::vector<TypeOfField>& discs, const ELGACmp& elgaCmp, const MEDCoupling::MEDFileFieldGlobsReal *globs,
                        MEDFileAnyTypeField1TS *f1ts, vtkDataSet *ds, ExportedTinyInfo *internalInfo)
 {
@@ -455,7 +455,7 @@ void MEDFileFieldRepresentationLeavesArrays::appendFields(const MEDTimeReq *tr, 
       MEDFileInt32Field1TS *f1tsPtrInt(dynamic_cast<MEDFileInt32Field1TS *>(f1tsPtr));
       MEDFileInt64Field1TS *f1tsPtrInt64(dynamic_cast<MEDFileInt64Field1TS *>(f1tsPtr));
       MEDFileFloatField1TS *f1tsPtrFloat(dynamic_cast<MEDFileFloatField1TS *>(f1tsPtr));
-      DataArray *crudeArr(0),*postProcessedArr(0);
+      MEDCoupling::DataArray *crudeArr(0),*postProcessedArr(0);
       if(f1tsPtrDbl)
         crudeArr=f1tsPtrDbl->getUndergroundDataArray();
       else if(f1tsPtrInt)
@@ -468,7 +468,7 @@ void MEDFileFieldRepresentationLeavesArrays::appendFields(const MEDTimeReq *tr, 
         throw INTERP_KERNEL::Exception("MEDFileFieldRepresentationLeavesArrays::appendFields : only FLOAT64, FLOAT32 and INT32 fields are dealt for the moment !");
       MEDFileField1TSStructItem fsst(MEDFileField1TSStructItem::BuildItemFrom(f1ts,mst));
       f1ts->loadArraysIfNecessary();
-      MCAuto<DataArray> v(mml->buildDataArray(fsst,globs,crudeArr));
+      MCAuto<MEDCoupling::DataArray> v(mml->buildDataArray(fsst,globs,crudeArr));
       postProcessedArr=v;
       //
       std::vector<TypeOfField> discs(f1ts->getTypesOfFieldAvailable());
@@ -729,9 +729,9 @@ void MEDFileFieldRepresentationLeaves::appendFields(const MEDTimeReq *tr, const 
 
 vtkUnstructuredGrid *MEDFileFieldRepresentationLeaves::buildVTKInstanceNoTimeInterpolationUnstructured(MEDUMeshMultiLev *mm) const
 {
-  MCAuto<DataArrayDouble> coordsSafe;
-  MCAuto<DataArrayByte> typesSafe;
-  MCAuto<DataArrayIdType> cellLocationsSafe,cellsSafe,faceLocationsOffsetSafe,faceLocationsConnSafe,facesOffsetSafe,facesConnSafe;
+  MCAuto<MEDCoupling::DataArrayDouble> coordsSafe;
+  MCAuto<MEDCoupling::DataArrayByte> typesSafe;
+  MCAuto<MEDCoupling::DataArrayIdType> cellLocationsSafe,cellsSafe,faceLocationsOffsetSafe,faceLocationsConnSafe,facesOffsetSafe,facesConnSafe;
   bool statusOfCoords(mm->buildVTUArrays94(
     coordsSafe,typesSafe,cellLocationsSafe,cellsSafe,
     faceLocationsOffsetSafe,faceLocationsConnSafe,facesOffsetSafe,facesConnSafe
@@ -778,7 +778,7 @@ vtkUnstructuredGrid *MEDFileFieldRepresentationLeaves::buildVTKInstanceNoTimeInt
 vtkRectilinearGrid *MEDFileFieldRepresentationLeaves::buildVTKInstanceNoTimeInterpolationCartesian(MEDCoupling::MEDCMeshMultiLev *mm) const
 {
   bool isInternal;
-  std::vector< DataArrayDouble * > arrs(mm->buildVTUArrays(isInternal));
+  std::vector< MEDCoupling::DataArrayDouble * > arrs(mm->buildVTUArrays(isInternal));
   vtkDoubleArray *vtkTmp(0);
   vtkRectilinearGrid *ret(vtkRectilinearGrid::New());
   std::size_t dim(arrs.size());
@@ -821,7 +821,7 @@ vtkRectilinearGrid *MEDFileFieldRepresentationLeaves::buildVTKInstanceNoTimeInte
 vtkStructuredGrid *MEDFileFieldRepresentationLeaves::buildVTKInstanceNoTimeInterpolationCurveLinear(MEDCoupling::MEDCurveLinearMeshMultiLev *mm) const
 {
   int meshStr[3]={1,1,1};
-  DataArrayDouble *coords(0);
+  MEDCoupling::DataArrayDouble *coords(0);
   std::vector<mcIdType> nodeStrct;
   bool isInternal;
   mm->buildVTUArrays(coords,nodeStrct,isInternal);
@@ -841,7 +841,7 @@ vtkStructuredGrid *MEDFileFieldRepresentationLeaves::buildVTKInstanceNoTimeInter
     AssignDataPointerToVTK<double>(da,coords,isInternal);//if isIntenal==True VTK has not the ownership of double * because MEDLoader main struct has it !
   else
     {
-      MCAuto<DataArrayDouble> coords2(coords->changeNbOfComponents(3,0.));
+      MCAuto<MEDCoupling::DataArrayDouble> coords2(coords->changeNbOfComponents(3,0.));
       AssignDataPointerToVTK<double>(da,coords2,false);//let VTK deal with double *
     }
   coords->decrRef();
@@ -891,7 +891,7 @@ vtkDataSet *MEDFileFieldRepresentationLeaves::buildVTKInstanceNoTimeInterpolatio
   //
   appendFields(tr,globs,mml,meshes,ret,internalInfo);
   // The arrays links to mesh
-  DataArrayIdType *famCells(0),*numCells(0);
+  MEDCoupling::DataArrayIdType *famCells(0),*numCells(0);
   bool noCpyFamCells(false),noCpyNumCells(false);
   ptMML2->retrieveFamilyIdsOnCells(famCells,noCpyFamCells);
   if(famCells)
@@ -916,7 +916,7 @@ vtkDataSet *MEDFileFieldRepresentationLeaves::buildVTKInstanceNoTimeInterpolatio
       numCells->decrRef();
     }
   // The arrays links to mesh
-  DataArrayIdType *famNodes(0),*numNodes(0);
+  MEDCoupling::DataArrayIdType *famNodes(0),*numNodes(0);
   bool noCpyFamNodes(false),noCpyNumNodes(false);
   ptMML2->retrieveFamilyIdsOnNodes(famNodes,noCpyFamNodes);
   if(famNodes)
@@ -941,7 +941,7 @@ vtkDataSet *MEDFileFieldRepresentationLeaves::buildVTKInstanceNoTimeInterpolatio
       numNodes->decrRef();
     }
   // Global Node Ids if any ! (In // mode)
-  DataArrayIdType *gni(ptMML2->retrieveGlobalNodeIdsIfAny());
+  MEDCoupling::DataArrayIdType *gni(ptMML2->retrieveGlobalNodeIdsIfAny());
   if(gni)
     {
       vtkMCIdTypeArray *vtkTab(vtkMCIdTypeArray::New());
@@ -1326,7 +1326,7 @@ void MEDFileFieldRepresentationTree::loadMainStructureOfFile(const char *fileNam
               MEDCoupling::MEDFileMesh *tmp(ms->getMeshAtPos(i));
               MEDCoupling::MEDFileUMesh *tmp2(dynamic_cast<MEDCoupling::MEDFileUMesh *>(tmp));
               if(tmp2)
-                MCAuto<DataArrayIdType> tmp3(tmp2->zipCoords());
+                MCAuto<MEDCoupling::DataArrayIdType> tmp3(tmp2->zipCoords());
             }
           fields=MEDFileFields::LoadPartOf(fileName,false,ms);//false is important to not read the values
 #else
