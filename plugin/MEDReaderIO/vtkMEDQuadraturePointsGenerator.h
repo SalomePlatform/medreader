@@ -35,7 +35,7 @@ public:
 
 protected:
 
-  int RequestData(vtkInformation *req, vtkInformationVector **input, vtkInformationVector *output);
+  int RequestData(vtkInformation *req, vtkInformationVector **input, vtkInformationVector *output) override;
   vtkMEDQuadraturePointsGenerator();
   virtual ~vtkMEDQuadraturePointsGenerator();
 private:

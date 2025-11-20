@@ -24,6 +24,7 @@
 
 //VTK includes
 #include <vtkCellData.h>
+#include <vtkDataSet.h>
 #include <vtkInformation.h>
 #include <vtkInformationQuadratureSchemeDefinitionVectorKey.h>
 #include <vtkInformationVector.h>
@@ -62,7 +63,7 @@ int vtkMEDQuadraturePointsGenerator::RequestData(
   
   // Get the input.
   tmpDataObj = input[0]->GetInformationObject(0)->Get(vtkDataObject::DATA_OBJECT());
-  vtkUnstructuredGrid *usgIn = vtkUnstructuredGrid::SafeDownCast(tmpDataObj);
+  vtkDataSet *usgIn = vtkDataSet::SafeDownCast(tmpDataObj);
   // Get the output.
   tmpDataObj = output->GetInformationObject(0)->Get(vtkDataObject::DATA_OBJECT());
   vtkPolyData *pdOut = vtkPolyData::SafeDownCast(tmpDataObj);
