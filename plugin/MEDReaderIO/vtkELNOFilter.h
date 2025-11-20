@@ -23,6 +23,7 @@
 #include "vtkQuadraturePointsGenerator.h"
 
 class vtkCellData;
+class vtkUnstructuredGrid;
 
 class VTK_EXPORT vtkELNOFilter: public vtkQuadraturePointsGenerator
 {
