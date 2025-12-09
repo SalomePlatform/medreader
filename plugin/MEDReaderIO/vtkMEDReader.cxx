@@ -303,7 +303,7 @@ int vtkMEDReader::RequestInformation(vtkInformation *request, vtkInformationVect
         }
       }
 
-//      request->Print(cout);
+//      request->Print(std::cout);
       vtkInformation *outInfo(outputVector->GetInformationObject(0));
       outInfo->Set(vtkDataObject::DATA_TYPE_NAME(),"vtkMultiBlockDataSet");
       this->UpdateSIL(request, outInfo);
@@ -354,7 +354,7 @@ int vtkMEDReader::RequestData(vtkInformation *request, vtkInformationVector ** /
           this->TimeFlagSelection->GetArrayName(i));
       }
 
-//      request->Print(cout);
+//      request->Print(std::cout);
       vtkInformation *outInfo(outputVector->GetInformationObject(0));
       vtkMultiBlockDataSet *output(vtkMultiBlockDataSet::SafeDownCast(outInfo->Get(vtkDataObject::DATA_OBJECT())));
       //bool isUpdated(false); // todo: unused
