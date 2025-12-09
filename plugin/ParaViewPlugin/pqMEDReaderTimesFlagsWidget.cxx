@@ -141,7 +141,7 @@ void pqMEDReaderTimesFlagsWidget::setTimeSteps(QList< QList< QVariant> > timeSte
 //-----------------------------------------------------------------------------
 void pqMEDReaderTimesFlagsWidget::setTimeStepsDomain(QList< QList< QVariant> > timeSteps)
 {
-  cout<<"TimeStepsDomai"<<endl;
+  // std::cout<<"TimeStepsDomai"<<std::endl;
   // Block signals so the reloading does not trigger
   // UncheckPropertyModified event
   this->blockSignals(true);

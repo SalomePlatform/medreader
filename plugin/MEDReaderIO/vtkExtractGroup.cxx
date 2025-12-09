@@ -99,7 +99,7 @@ int vtkExtractGroup::RequestInformation(vtkInformation * /*request*/, vtkInforma
   try
     {
 //      std::cerr << "########################################## vtkExtractGroup::RequestInformation ##########################################" << std::endl;
-//      request->Print(cout);
+//      request->Print(std::cout);
       //vtkInformation *outInfo(outputVector->GetInformationObject(0)); // todo: unused
       vtkInformation *inputInfo(inputVector[0]->GetInformationObject(0));
       if(!ExtractGroupInternal::IndependantIsInformationOK(vtkMEDReader::META_DATA(),inputInfo))
@@ -220,7 +220,7 @@ int vtkExtractGroup::RequestData(vtkInformation * /*request*/, vtkInformationVec
   try
     {
       // std::cerr << "########################################## vtkExtractGroup::RequestData        ##########################################" << std::endl;
-      // request->Print(cout);
+      // request->Print(std::cout);
       vtkInformation* inputInfo=inputVector[0]->GetInformationObject(0);
       vtkMultiBlockDataSet *inputMB(vtkMultiBlockDataSet::SafeDownCast(inputInfo->Get(vtkDataObject::DATA_OBJECT())));
       if(inputMB->GetNumberOfBlocks()!=1)
