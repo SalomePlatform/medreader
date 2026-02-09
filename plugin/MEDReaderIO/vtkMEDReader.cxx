@@ -260,6 +260,7 @@ int vtkMEDReader::RequestInformation(vtkInformation *request, vtkInformationVect
             {
               iPart=vmpc->GetLocalProcessId();
               nbOfParts=vmpc->GetNumberOfProcesses();
+              this->EffectiveDistributeWithMPI = (iPart!=0) && (nbOfParts!=1);
             }
           }
 #endif
@@ -365,7 +366,7 @@ int vtkMEDReader::RequestData(vtkInformation *request, vtkInformationVector ** /
 #ifndef MEDREADER_USE_MPI
       this->FillMultiBlockDataSetInstance(output,reqTS,&ti);
 #else
-      if (this->DistributeWithMPI && this->GCGCP)
+      if ( (this->DistributeWithMPI && this->EffectiveDistributeWithMPI) && this->GCGCP)
       {
         vtkSmartPointer<vtkGhostCellsGenerator> gcg(vtkSmartPointer<vtkGhostCellsGenerator>::New());
         {
@@ -380,7 +381,9 @@ int vtkMEDReader::RequestData(vtkInformation *request, vtkInformationVector ** /
         output->SetBlock(0,gcg->GetOutput());
       }
       else
+      {
 	      this->FillMultiBlockDataSetInstance(output,reqTS,&ti);
+      }
 #endif
       if(!ti.empty())
         {
