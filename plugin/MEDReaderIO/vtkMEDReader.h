@@ -135,6 +135,7 @@ class VTK_EXPORT vtkMEDReader : public vtkMultiBlockDataSetAlgorithm
   bool GCGCP = true;
   bool DistributeWithMPI = true;
   bool RemoveDebugArrays = false;
+  bool EffectiveDistributeWithMPI = true;
 };
 
 #endif //__vtkMEDReader_h_
