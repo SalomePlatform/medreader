@@ -112,6 +112,8 @@ if(PARAVIEW_USE_QT)
 endif(PARAVIEW_USE_QT)
 
 paraview_add_plugin(MEDReader
+  REQUIRED_ON_CLIENT
+  REQUIRED_ON_SERVER
   VERSION "5.0"
   UI_INTERFACES ${interfaces}
   UI_FILES ${ui_files}
