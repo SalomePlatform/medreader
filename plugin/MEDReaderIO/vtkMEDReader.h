@@ -32,6 +32,7 @@ class vtkDataSet;
 class vtkMutableDirectedGraph;
 class vtkInformationDataObjectMetaDataKey;
 class vtkInformationDoubleVectorKey;
+class vtkCollection;
 class ExportedTinyInfo;
 
 class VTK_EXPORT vtkMEDReader : public vtkMultiBlockDataSetAlgorithm
@@ -57,8 +58,6 @@ class VTK_EXPORT vtkMEDReader : public vtkMultiBlockDataSetAlgorithm
   virtual void SetTimesFlagsStatus(const char *name, int status);
   virtual int GetNumberOfTimesFlagsArrays();
   virtual const char *GetTimesFlagsArrayName(int index);
-  //! Build the graph used to pass information to the client on the supports
-  virtual std::string BuildSIL(vtkMutableDirectedGraph*);
 
   // Description
   // Reload will delete the internal reader and recreate it with default properties
@@ -107,23 +106,24 @@ class VTK_EXPORT vtkMEDReader : public vtkMultiBlockDataSetAlgorithm
   void GetRidOffDebugArrays(int);
   vtkGetMacro(RemoveDebugArrays, bool);
 
+  vtkMutableDirectedGraph *GetSIL();
 
+  void setSILCallback( void *function, vtkCollection *collection);
  protected:
   vtkMEDReader();
   virtual ~vtkMEDReader();
   virtual int RequestInformation(vtkInformation*, vtkInformationVector**, vtkInformationVector*);
   virtual int RequestData(vtkInformation*, vtkInformationVector**, vtkInformationVector*);
  private:
-  void UpdateSIL(vtkInformation * request, vtkInformation * info);
-  virtual double PublishTimeStepsIfNeeded(vtkInformation*, bool& isUpdated);
-  virtual void FillMultiBlockDataSetInstance(vtkMultiBlockDataSet *output, double reqTS, ExportedTinyInfo *internalInfo=0);
+  double PublishTimeStepsIfNeeded(vtkInformation*, bool& isUpdated);
+  void FillMultiBlockDataSetInstance(vtkMultiBlockDataSet *output, double reqTS, ExportedTinyInfo *internalInfo=0);
   vtkDataSet *RetrieveDataSetAtTime(double reqTS, ExportedTinyInfo *internalInfo);
  private:
   //BTX
   //ETX
 
   class vtkMEDReaderInternal;
-  vtkMEDReaderInternal* Internal;
+  vtkMEDReaderInternal *Internal;
 
   vtkNew<vtkDataArraySelection> FieldSelection;
   vtkNew<vtkDataArraySelection> TimeFlagSelection;

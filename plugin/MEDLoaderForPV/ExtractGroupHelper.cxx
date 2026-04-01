@@ -20,6 +20,7 @@
 
 #include "ExtractGroupHelper.h"
 #include "MEDFileFieldRepresentationTree.hxx"
+#include "MEDReaderCommon.hxx"
 
 #include "vtkInformation.h"
 #include "vtkInformationDataObjectMetaDataKey.h"
@@ -27,8 +28,10 @@
 #include "vtkMutableDirectedGraph.h"
 #include "vtkDataSetAttributes.h"
 #include "vtkStringArray.h"
+#include "vtkTree.h"
 
 #include <cstring>
+#include <algorithm>
 
 const char ExtractGroupGrp::START[]="GRP_";
 
@@ -71,6 +74,13 @@ ExtractGroupFam::ExtractGroupFam(const char *name):ExtractGroupStatus(name),_id(
   std::ostringstream oss; oss << START << name; _ze_key_name=oss.str(); _name=name0;
 }
 
+std::string ExtractGroupFam::FromFamInfoToEntry( const std::string& famName, int famId )
+{
+  std::ostringstream oss;
+  oss << famName << MEDFileFieldRepresentationLeavesArrays::ZE_SEP << famId;
+  return oss.str();
+}
+
 bool ExtractGroupFam::isSameAs(const ExtractGroupFam& other) const
 {
   bool ret(ExtractGroupStatus::isSameAs(other));
@@ -107,86 +117,121 @@ bool ExtractGroupInternal::IndependantIsInformationOK(vtkInformationDataObjectMe
   if(!sil)
     return false;
   int idNames(0);
-  vtkAbstractArray *verticesNames(sil->GetVertexData()->GetAbstractArray("Names",idNames));
-  vtkStringArray *verticesNames2(vtkStringArray::SafeDownCast(verticesNames));
-  if(!verticesNames2)
+  vtkStringArray *verticesNames( vtkStringArray::SafeDownCast( sil->GetVertexData()->GetAbstractArray("Names",idNames) ) );
+  if(!verticesNames)
     return false;
-  for(int i=0;i<verticesNames2->GetNumberOfValues();i++)
+  for(int i=0;i<verticesNames->GetNumberOfValues();i++)
     {
-      vtkStdString &st(verticesNames2->GetValue(i));
-      if(st=="MeshesFamsGrps")
+      vtkStdString &st(verticesNames->GetValue(i));
+      if( st == MESHES_FAMS_GROUPS )
         return true;
     }
   return false;
 }
 
-const char *ExtractGroupInternal::getMeshName() const
+/*!
+ * Take care of the returned pointer. Must be steady pointer.
+ */
+const char *ExtractGroupInternal::getMeshNameYellowSubmarine() const
 {
-  return this->_mesh_name.c_str();
+  return this->_data.getMeshNameYellowSubmarine();
 }
 
-void ExtractGroupInternal::loadFrom(vtkMutableDirectedGraph *sil)
+vtkIdType ExtractGroupData::LocateFamGroupsTreeTopVertexInSIL(vtkMutableDirectedGraph *sil, vtkIdType *idMeshesFamsGrpsMulti)
 {
-  std::vector<ExtractGroupGrp> oldGrps(_groups); _groups.clear();
-  std::vector<ExtractGroupFam> oldFams(_fams); _fams.clear();
-  int idNames(0);
-  vtkAbstractArray *verticesNames(sil->GetVertexData()->GetAbstractArray("Names",idNames));
-  vtkStringArray *verticesNames2(vtkStringArray::SafeDownCast(verticesNames));
-  vtkIdType id0;
+  int nameId( -1 );
+  vtkStringArray *verticesNames( vtkStringArray::SafeDownCast(sil->GetVertexData()->GetAbstractArray("Names",nameId)) );
+  vtkIdType idMeshesFamsGrps( -1 );
   bool found(false);
-  for(int i=0;i<verticesNames2->GetNumberOfValues();i++)
+  for( int i = 0; i<verticesNames->GetNumberOfValues() ; i++ )
     {
-      vtkStdString &st(verticesNames2->GetValue(i));
-      if(st=="MeshesFamsGrps")
+      vtkStdString &st(verticesNames->GetValue(i));
+      if( st == MESHES_FAMS_GROUPS )
         {
-          id0=i;
+          idMeshesFamsGrps = i;
           found=true;
         }
+      if( st == MESHES_FAMS_GROUPS_MULTI )
+      {
+        if( idMeshesFamsGrpsMulti )
+        {
+          *idMeshesFamsGrpsMulti = i;
+        }
+      }
     }
   if(!found)
     throw INTERP_KERNEL::Exception("There is an internal error ! The tree on server side has not the expected look !");
-  vtkAdjacentVertexIterator *it0(vtkAdjacentVertexIterator::New());
-  sil->GetAdjacentVertices(id0,it0);
+  return idMeshesFamsGrps;
+}
+
+void ExtractGroupData::fuseForAggregated( const std::vector< ExtractGroupData >& egds )
+{
+  if( egds.empty() )
+  {
+    throw INTERP_KERNEL::Exception("FuseForAggregated : empty input vector !");
+  }
+  const ExtractGroupData& ref( egds[0] );
+  _mesh_name = ref.getMeshName();
+  std::set<std::string> grpsOnAllInstances;
+  for( const ExtractGroupData& egd : egds )
+  {
+    for( std::pair<std::string,std::vector<int> > grpData : egd.getAllGroups() )
+    {
+      grpsOnAllInstances.insert( grpData.first );
+    }
+  }
+  _groups.clear();
+  _fams.clear();
+  for( std::string grp : grpsOnAllInstances )
+  {
+    _groups.emplace_back( ExtractGroupGrp( grp.c_str() ) );
+  }
+}
+
+/*!
+ * Load tree data in META_DATA information key under MeshesFamsGrps.
+ */
+void ExtractGroupData::loadFromSingle(vtkMutableDirectedGraph *sil, vtkStringArray *verticesNames, vtkIdType vertexIdOfMeshesFamsGrps)
+{
+  std::vector<ExtractGroupGrp> oldGrps(_groups); _groups.clear();
+  std::vector<ExtractGroupFam> oldFams(_fams); _fams.clear();
+  vtkNew<vtkAdjacentVertexIterator> it0;
+  sil->GetAdjacentVertices(vertexIdOfMeshesFamsGrps,it0);
   while(it0->HasNext())
     {
       vtkIdType id1(it0->Next());
-      std::string meshName(verticesNames2->GetValue(id1).c_str());
+      std::string meshName(verticesNames->GetValue(id1).c_str());
       this->_mesh_name=meshName;
-      vtkAdjacentVertexIterator *it1(vtkAdjacentVertexIterator::New());
+      vtkNew<vtkAdjacentVertexIterator> it1;
       sil->GetAdjacentVertices(id1,it1);
       vtkIdType idZeGrps(it1->Next());//zeGroups
-      vtkAdjacentVertexIterator *itGrps(vtkAdjacentVertexIterator::New());
+      vtkNew<vtkAdjacentVertexIterator> itGrps;
       sil->GetAdjacentVertices(idZeGrps,itGrps);
       while(itGrps->HasNext())
         {
           vtkIdType idg(itGrps->Next());
-          ExtractGroupGrp grp(verticesNames2->GetValue(idg).c_str());
-          vtkAdjacentVertexIterator *itGrps2(vtkAdjacentVertexIterator::New());
+          ExtractGroupGrp grp(verticesNames->GetValue(idg).c_str());
+          vtkNew<vtkAdjacentVertexIterator> itGrps2;
           sil->GetAdjacentVertices(idg,itGrps2);
           std::vector<std::string> famsOnGroup;
           while(itGrps2->HasNext())
             {
               vtkIdType idgf(itGrps2->Next());
-              famsOnGroup.push_back(std::string(verticesNames2->GetValue(idgf)).c_str());
+              famsOnGroup.push_back(std::string(verticesNames->GetValue(idgf)).c_str());
             }
           grp.setFamilies(famsOnGroup);
-          itGrps2->Delete();
           _groups.push_back(grp);
         }
-      itGrps->Delete();
       vtkIdType idZeFams(it1->Next());//zeFams
-      it1->Delete();
-      vtkAdjacentVertexIterator *itFams(vtkAdjacentVertexIterator::New());
+      vtkNew<vtkAdjacentVertexIterator> itFams;
       sil->GetAdjacentVertices(idZeFams,itFams);
       while(itFams->HasNext())
         {
           vtkIdType idf(itFams->Next());
-          ExtractGroupFam fam(verticesNames2->GetValue(idf).c_str());
+          ExtractGroupFam fam(verticesNames->GetValue(idf).c_str());
           _fams.push_back(fam);
         }
-      itFams->Delete();
     }
-  it0->Delete();
   //
   std::size_t szg(_groups.size()),szf(_fams.size());
   if(szg==oldGrps.size() && szf==oldFams.size())
@@ -206,13 +251,21 @@ void ExtractGroupInternal::loadFrom(vtkMutableDirectedGraph *sil)
     }
 }
 
-int ExtractGroupInternal::getNumberOfEntries() const
+/*!
+ * Method exposable to ParaView.
+ */
+const char *ExtractGroupData::getMeshNameYellowSubmarine() const
+{
+  return _mesh_name.c_str();
+}
+
+int ExtractGroupData::getNumberOfEntries() const
 {
   std::size_t sz0(_groups.size()),sz1(_fams.size());
   return (int)(sz0+sz1);
 }
 
-const char *ExtractGroupInternal::getKeyOfEntry(int i) const
+const char *ExtractGroupData::getKeyOfEntry(int i) const
 {
   int sz0((int)_groups.size());
   if(i>=0 && i<sz0)
@@ -221,18 +274,7 @@ const char *ExtractGroupInternal::getKeyOfEntry(int i) const
     return _fams[i-sz0].getKeyOfEntry();
 }
 
-bool ExtractGroupInternal::getStatusOfEntryStr(const char *entry) const
-{
-  const ExtractGroupStatus& elt(getEntry(entry));
-  return elt.getStatus();
-}
-
-void ExtractGroupInternal::setStatusOfEntryStr(const char *entry, bool status)
-{
-  _selection.emplace_back(entry,status);
-}
-
-const ExtractGroupStatus& ExtractGroupInternal::getEntry(const char *entry) const
+const ExtractGroupStatus& ExtractGroupData::getEntry(const char *entry) const
 {
   std::string entryCpp(entry);
   for(std::vector<ExtractGroupGrp>::const_iterator it0=_groups.begin();it0!=_groups.end();it0++)
@@ -241,11 +283,23 @@ const ExtractGroupStatus& ExtractGroupInternal::getEntry(const char *entry) cons
   for(std::vector<ExtractGroupFam>::const_iterator it0=_fams.begin();it0!=_fams.end();it0++)
     if(entryCpp==(*it0).getKeyOfEntry())
       return *it0;
-  std::ostringstream oss; oss << "vtkExtractGroupInternal::getEntry : no such entry \"" << entry << "\"!";
+  std::ostringstream oss; oss << "ExtractGroupData::getEntry : no such entry \"" << entry << "\"!";
   throw INTERP_KERNEL::Exception(oss.str().c_str());
 }
 
-ExtractGroupStatus& ExtractGroupInternal::getEntry(const char *entry)
+const ExtractGroupStatus *ExtractGroupData::getEntryNoThrow(const char *entry) const
+{
+  std::string entryCpp(entry);
+  for(std::vector<ExtractGroupGrp>::const_iterator it0=_groups.begin();it0!=_groups.end();it0++)
+    if(entryCpp==(*it0).getKeyOfEntry())
+      return &(*it0);
+  for(std::vector<ExtractGroupFam>::const_iterator it0=_fams.begin();it0!=_fams.end();it0++)
+    if(entryCpp==(*it0).getKeyOfEntry())
+      return &(*it0);
+  return nullptr;
+}
+
+ExtractGroupStatus& ExtractGroupData::getEntry(const char *entry)
 {
   std::string entryCpp(entry);
   for(std::vector<ExtractGroupGrp>::iterator it0=_groups.begin();it0!=_groups.end();it0++)
@@ -254,11 +308,11 @@ ExtractGroupStatus& ExtractGroupInternal::getEntry(const char *entry)
   for(std::vector<ExtractGroupFam>::iterator it0=_fams.begin();it0!=_fams.end();it0++)
     if(entryCpp==(*it0).getKeyOfEntry())
       return *it0;
-  std::ostringstream oss; oss << "vtkExtractGroupInternal::getEntry : no such entry \"" << entry << "\"!";
+  std::ostringstream oss; oss << "ExtractGroupData::getEntry : no such entry \"" << entry << "\"!";
   throw INTERP_KERNEL::Exception(oss.str().c_str());
 }
 
-void ExtractGroupInternal::printMySelf(std::ostream& os) const
+void ExtractGroupData::printMySelf(std::ostream& os) const
 {
   os << "Groups :" << std::endl;
   for(std::vector<ExtractGroupGrp>::const_iterator it0=_groups.begin();it0!=_groups.end();it0++)
@@ -268,7 +322,7 @@ void ExtractGroupInternal::printMySelf(std::ostream& os) const
     (*it0).printMySelf(os);
 }
 
-int ExtractGroupInternal::getIdOfFamily(const std::string& famName) const
+int ExtractGroupData::getIdOfFamily(const std::string& famName) const
 {
   for(std::vector<ExtractGroupFam>::const_iterator it=_fams.begin();it!=_fams.end();it++)
     {
@@ -278,13 +332,16 @@ int ExtractGroupInternal::getIdOfFamily(const std::string& famName) const
   return std::numeric_limits<int>::max();
 }
 
-std::set<int> ExtractGroupInternal::getIdsToKeep() const
+std::map<std::string,int> ExtractGroupData::computeFamStrIdMap() const
 {
-  for(auto it: _selection)
-    {
-      const ExtractGroupStatus& elt(getEntry(it.first.c_str()));
-      elt.setStatus(it.second);
-    }
+  std::map<std::string,int> ret;
+  for(std::vector<ExtractGroupFam>::const_iterator it0=_fams.begin();it0!=_fams.end();it0++)
+    ret[(*it0).getName()]=(*it0).getId();
+  return ret;
+}
+
+std::set<int> ExtractGroupData::getIdsHighlighted() const
+{
   std::map<std::string,int> m(this->computeFamStrIdMap());
   std::set<int> s;
   for(std::vector<ExtractGroupGrp>::const_iterator it0=_groups.begin();it0!=_groups.end();it0++)
@@ -306,46 +363,168 @@ std::set<int> ExtractGroupInternal::getIdsToKeep() const
   return s;
 }
 
-// see reference : https://en.cppreference.com/w/cpp/iterator/iterator
-class FamilyIterator : public std::iterator< std::input_iterator_tag, long, long, int*, int >
+void ExtractGroupData::clearSelection() const
 {
-  long _num = 0;
-  const ExtractGroupInternal *_egi = nullptr;
-  const std::vector<std::string> *_fams = nullptr;
-public:
-  explicit FamilyIterator(long num , const ExtractGroupInternal *egi, const std::vector<std::string>& fams) : _num(num),_egi(egi),_fams(&fams) {}
-  FamilyIterator& operator++() { ++_num; return *this;}
-  bool operator==(const FamilyIterator& other) const {return _num == other._num;}
-  bool operator!=(const FamilyIterator& other) const {return !(*this == other);}
-  reference operator*() const {return _egi->getIdOfFamily((*_fams)[_num]);}
-};
-
-std::vector< std::pair<std::string,std::vector<int> > > ExtractGroupInternal::getAllGroups() const
-{
-    std::vector< std::pair<std::string,std::vector<int> > > ret;
-    for(const auto&  grp : _groups)
-    {
-        const std::vector<std::string>& fams(grp.getFamiliesLyingOn());
-        std::vector<int> famIds(FamilyIterator(0,this,fams),FamilyIterator(fams.size(),this,fams));
-        std::pair<std::string,std::vector<int> > elt(grp.getName(),std::move(famIds));
-        ret.emplace_back(std::move(elt));
-    }
-    return ret;
-}
-
-void ExtractGroupInternal::clearSelection() const
-{
-  _selection.clear();
   for(auto it : _groups)
     it.resetStatus();
   for(auto it : _fams)
     it.resetStatus();
 }
 
-std::map<std::string,int> ExtractGroupInternal::computeFamStrIdMap() const
+// see reference : https://en.cppreference.com/w/cpp/iterator/iterator
+class FamilyIterator : public std::iterator< std::input_iterator_tag, long, long, int*, int >
 {
-  std::map<std::string,int> ret;
-  for(std::vector<ExtractGroupFam>::const_iterator it0=_fams.begin();it0!=_fams.end();it0++)
-    ret[(*it0).getName()]=(*it0).getId();
+  long _num = 0;
+  const ExtractGroupData *_egi = nullptr;
+  const std::vector<std::string> *_fams = nullptr;
+public:
+  explicit FamilyIterator(long num , const ExtractGroupData *egi, const std::vector<std::string>& fams) : _num(num),_egi(egi),_fams(&fams) {}
+  FamilyIterator& operator++() { ++_num; return *this;}
+  bool operator==(const FamilyIterator& other) const {return _num == other._num;}
+  bool operator!=(const FamilyIterator& other) const {return !(*this == other);}
+  reference operator*() const {return _egi->getIdOfFamily((*_fams)[_num]);}
+};
+
+std::vector< std::pair<std::string,std::vector<int> > > ExtractGroupData::getAllGroups() const
+{
+  std::vector< std::pair<std::string,std::vector<int> > > ret;
+  for(const auto&  grp : _groups)
+  {
+      const std::vector<std::string>& fams(grp.getFamiliesLyingOn());
+      std::vector<int> famIds(FamilyIterator(0,this,fams),FamilyIterator(fams.size(),this,fams));
+      std::pair<std::string,std::vector<int> > elt(grp.getName(),std::move(famIds));
+      ret.emplace_back(std::move(elt));
+  }
   return ret;
+}
+
+std::vector<std::string> ExtractGroupData::getGroupsNames() const
+{
+  std::vector<std::string> ret;
+  std::for_each( _groups.cbegin(), _groups.cend(), [&ret]( const ExtractGroupGrp& grp )
+  {
+    ret.push_back( grp.getName() );
+  }
+   );
+  return ret;
+}
+
+std::vector<std::string> ExtractGroupData::getFamiliesNames() const
+{
+  std::vector<std::string> ret;
+  std::for_each( _fams.cbegin(), _fams.cend(), [&ret]( const ExtractGroupFam& fam )
+  {
+    ret.push_back( fam.getName() );
+  }
+   );
+  return ret;
+}
+
+std::vector<std::string> ExtractGroupData::getFamiliesOnGroup(const std::string& grpName) const
+{
+  for( const ExtractGroupGrp& grp : _groups )
+  {
+    if( grp.getName() == grpName )
+    {
+      return grp.getFamiliesLyingOn();
+    }
+  }
+  THROW_IK_EXCEPTION( "ExtractGroupData::getFamiliesOnGroup : Impossible to locate group \"" << grpName << "\"" );
+}
+
+int ExtractGroupData::getFamilyId( const std::string& famName ) const
+{
+  for( const ExtractGroupFam& fam : _fams )
+  {
+    if( fam.getName() == famName )
+    {
+      return fam.getId();
+    }
+  }
+  THROW_IK_EXCEPTION( "ExtractGroupData::getFamiliesOnGroup : Impossible to locate family \"" << famName << "\"" );
+}
+
+void ExtractGroupInternal::loadFromMultiple(vtkMutableDirectedGraph *sil, vtkStringArray *verticesNames, vtkIdType idMeshesFamsGrpsMulti)
+{
+  vtkNew<vtkTree> tree;
+  tree->CheckedShallowCopy( sil );
+  _data_multi.resize( tree->GetNumberOfChildren( idMeshesFamsGrpsMulti ) );
+  for (vtkIdType iFile = 0; iFile < tree->GetNumberOfChildren( idMeshesFamsGrpsMulti ) ; iFile++ )
+  {
+    vtkIdType iFileEntry( tree->GetChild(idMeshesFamsGrpsMulti, iFile) );
+    int iFileExpected( std::stoi( verticesNames->GetValue(iFileEntry) ) );
+    if( iFile != iFileExpected )
+    {
+      throw INTERP_KERNEL::Exception("There is an internal error inside SIL subtree of aggregated files.");
+    }
+    _data_multi[ iFile ].loadFromSingle( sil, verticesNames, iFileEntry);
+  }
+}
+
+void ExtractGroupInternal::loadFrom(vtkMutableDirectedGraph *sil)
+{
+  int nameId( -1 );
+  vtkStringArray *verticesNames( vtkStringArray::SafeDownCast(sil->GetVertexData()->GetAbstractArray("Names",nameId)) );
+  vtkIdType idMeshesFamsGrpsMulti( -1 );
+  vtkIdType idMeshesFamsGrps( ExtractGroupData::LocateFamGroupsTreeTopVertexInSIL( sil, &idMeshesFamsGrpsMulti ) );
+  _data.loadFromSingle( sil, verticesNames, idMeshesFamsGrps );
+  if( idMeshesFamsGrpsMulti != -1 )
+  {
+    loadFromMultiple( sil, verticesNames, idMeshesFamsGrpsMulti );
+  }
+}
+
+bool ExtractGroupInternal::getStatusOfEntryStr(const char *entry) const
+{
+  const ExtractGroupStatus& elt(_data.getEntry(entry));
+  return elt.getStatus();
+}
+
+void ExtractGroupInternal::setStatusOfEntryStr(const char *entry, bool status)
+{
+  _selection.emplace_back(entry,status);
+}
+
+std::set<int> ExtractGroupInternal::getIdsToKeep() const
+{
+  for(auto it: _selection)
+    {
+      const ExtractGroupStatus& elt(_data.getEntry(it.first.c_str()));
+      elt.setStatus(it.second);
+    }
+  return _data.getIdsHighlighted();
+}
+
+std::set<int> ExtractGroupInternal::getIdsToKeepMulti( unsigned int iBlock ) const
+{
+  if( iBlock >= ( unsigned int )_data_multi.size() )
+  {
+    THROW_IK_EXCEPTION( "vtkExtractGroup::RequestData : in multi mode invalid block " << iBlock );
+  }
+  const ExtractGroupData& cur( _data_multi[iBlock] );
+  for(auto it: _selection)
+    {
+      if( it.second )
+      {
+        const ExtractGroupStatus *elt( cur.getEntryNoThrow( it.first.c_str() ) );
+        if( elt )
+        {
+          elt->setStatus( it.second );
+        }
+      }
+    }
+  return _data_multi[iBlock].getIdsHighlighted();
+}
+
+bool ExtractGroupInternal::isMultiMode( unsigned int nbBlock ) const
+{
+  if( _data_multi.empty() )
+    return false;
+  return (unsigned int) _data_multi.size() == nbBlock;
+}
+
+void ExtractGroupInternal::clearSelection() const
+{
+  _selection.clear();
+  _data.clearSelection();
 }
