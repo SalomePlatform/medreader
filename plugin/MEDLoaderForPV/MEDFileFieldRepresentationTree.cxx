@@ -20,6 +20,8 @@
 
 #include "MEDTimeReq.hxx"
 #include "MEDUtilities.hxx"
+#include "ExtractGroupHelper.h"
+#include "ExtractGroupHelper.txx"
 
 #include "MEDFileFieldRepresentationTree.hxx"
 #include "MEDCouplingFieldDiscretization.hxx"
@@ -45,6 +47,7 @@
 #include "vtkAOSDataArrayTemplate.h"
 #include "vtkIdTypeArray.h"
 #include "vtkDoubleArray.h"
+#include "vtkStringArray.h"
 #include "vtkIntArray.h"
 #include "vtkLongArray.h"
 #include "vtkNew.h"
@@ -76,10 +79,6 @@ const char MEDFileFieldRepresentationLeavesArrays::FAMILY_ID_NODE_NAME[]="Family
 const char MEDFileFieldRepresentationLeavesArrays::NUM_ID_NODE_NAME[]="NumIdNode";
 
 const char MEDFileFieldRepresentationLeavesArrays::GLOBAL_NODE_ID_NAME[]="GlobalNodeIds";// WARNING DO NOT CHANGE IT BEFORE HAVING CHECKED IN PV SOURCES !
-
-const char MEDFileFieldRepresentationTree::ROOT_OF_GRPS_IN_TREE[]="zeGrps";
-
-const char MEDFileFieldRepresentationTree::ROOT_OF_FAM_IDS_IN_TREE[]="zeFamIds";
 
 const char MEDFileFieldRepresentationTree::COMPO_STR_TO_LOCATE_MESH_DA[]="-@?|*_";
 
@@ -412,15 +411,15 @@ const char *MEDFileFieldRepresentationLeavesArrays::getZeNameC() const
   return _ze_full_name.c_str();
 }
 
-void MEDFileFieldRepresentationLeavesArrays::feedSIL(vtkMutableDirectedGraph* sil, vtkIdType root, vtkVariantArray *edge, std::vector<std::string>& names) const
+void MEDFileFieldRepresentationLeavesArrays::feedSIL(vtkMutableDirectedGraph* sil, vtkIdType root, vtkStringArray *names) const
 {
-  vtkIdType refId(sil->AddChild(root,edge));
-  names.push_back(_ze_name);
+  vtkIdType refId(sil->AddChild(root));
+  names->InsertNextValue(_ze_name);
   //
   if(MEDFileFieldRepresentationTree::IsFieldMeshRegardingInfo(((operator->())->getInfo())))
     {
-      sil->AddChild(refId,edge);
-      names.push_back(std::string());
+      sil->AddChild(refId);
+      names->InsertNextValue(std::string());
     }
 }
 
@@ -586,15 +585,15 @@ void MEDFileFieldRepresentationLeaves::computeFullNameInLeaves(const std::string
  * \param [in] edge
  * \param [out] names
  */
-void MEDFileFieldRepresentationLeaves::feedSIL(const MEDCoupling::MEDFileMeshes *ms, const std::string& meshName, vtkMutableDirectedGraph* sil, vtkIdType root, vtkVariantArray *edge, std::vector<std::string>& names) const
+void MEDFileFieldRepresentationLeaves::feedSIL(const MEDCoupling::MEDFileMeshes *ms, const std::string& meshName, vtkMutableDirectedGraph* sil, vtkIdType root, vtkStringArray *names) const
 {
-  vtkIdType root2(sil->AddChild(root,edge));
-  names.push_back(std::string("Arrs"));
+  vtkIdType root2(sil->AddChild(root));
+  names->InsertNextValue(std::string("Arrs"));
   for(std::vector<MEDFileFieldRepresentationLeavesArrays>::const_iterator it=_arrays.begin();it!=_arrays.end();it++)
-    (*it).feedSIL(sil,root2,edge,names);
+    (*it).feedSIL(sil,root2,names);
   //
-  vtkIdType root3(sil->AddChild(root,edge));
-  names.push_back(std::string("InfoOnGeoType"));
+  vtkIdType root3(sil->AddChild(root));
+  names->InsertNextValue(std::string("InfoOnGeoType"));
   const MEDCoupling::MEDFileMesh *m(0);
   if(ms)
     m=ms->getMeshWithName(meshName);
@@ -606,8 +605,8 @@ void MEDFileFieldRepresentationLeaves::feedSIL(const MEDCoupling::MEDFileMeshes 
     {
       const INTERP_KERNEL::CellModel& cm(INTERP_KERNEL::CellModel::GetCellModel(*it2));
       std::string cmStr(cm.getRepr()); cmStr=cmStr.substr(5);//skip "NORM_"
-      sil->AddChild(root3,edge);
-      names.push_back(cmStr);
+      sil->AddChild(root3);
+      names->InsertNextValue(cmStr);
     }
 }
 
@@ -1012,50 +1011,50 @@ void MEDFileFieldRepresentationTree::activateTheFirst() const
         }
 }
 
-void MEDFileFieldRepresentationTree::feedSIL(vtkMutableDirectedGraph* sil, vtkIdType root, vtkVariantArray *edge, std::vector<std::string>& names) const
+void MEDFileFieldRepresentationTree::feedSIL(vtkMutableDirectedGraph* sil, vtkIdType root, vtkStringArray *names) const
 {
   std::size_t it0Cnt(0);
   for(std::vector< std::vector< std::vector< MEDFileFieldRepresentationLeaves > > >::const_iterator it0=_data_structure.begin();it0!=_data_structure.end();it0++,it0Cnt++)
     {
-      vtkIdType InfoOnTSId(sil->AddChild(root,edge));
-      names.push_back((*it0)[0][0].getHumanReadableOverviewOfTS());
+      vtkIdType InfoOnTSId(sil->AddChild(root));
+      names->InsertNextValue((*it0)[0][0].getHumanReadableOverviewOfTS());
       //
-      vtkIdType NbOfTSId(sil->AddChild(InfoOnTSId,edge));
+      vtkIdType NbOfTSId(sil->AddChild(InfoOnTSId));
       std::vector<double> ts;
       std::vector< std::pair<int,int> > dtits((*it0)[0][0].getTimeStepsInCoarseMEDFileFormat(ts));
       std::size_t nbOfTS(dtits.size());
       std::ostringstream oss3; oss3 << nbOfTS;
-      names.push_back(oss3.str());
+      names->InsertNextValue(oss3.str());
       for(std::size_t i=0;i<nbOfTS;i++)
         {
           std::ostringstream oss4; oss4 << dtits[i].first;
-          vtkIdType DtId(sil->AddChild(NbOfTSId,edge));
-          names.push_back(oss4.str());
+          vtkIdType DtId(sil->AddChild(NbOfTSId));
+          names->InsertNextValue(oss4.str());
           std::ostringstream oss5; oss5 << dtits[i].second;
-          vtkIdType ItId(sil->AddChild(DtId,edge));
-          names.push_back(oss5.str());
+          vtkIdType ItId(sil->AddChild(DtId));
+          names->InsertNextValue(oss5.str());
           std::ostringstream oss6; oss6 << ts[i];
-          sil->AddChild(ItId,edge);
-          names.push_back(oss6.str());
+          sil->AddChild(ItId);
+          names->InsertNextValue(oss6.str());
         }
       //
       std::ostringstream oss; oss << MEDFileFieldRepresentationLeavesArrays::TS_STR << it0Cnt;
       std::string tsName(oss.str());
-      vtkIdType typeId0(sil->AddChild(root,edge));
-      names.push_back(tsName);
+      vtkIdType typeId0(sil->AddChild(root));
+      names->InsertNextValue(tsName);
       for(std::vector< std::vector< MEDFileFieldRepresentationLeaves > >::const_iterator it1=(*it0).begin();it1!=(*it0).end();it1++)
         {
           std::string meshName((*it1)[0].getMeshName());
-          vtkIdType typeId1(sil->AddChild(typeId0,edge));
-          names.push_back(meshName);
+          vtkIdType typeId1(sil->AddChild(typeId0));
+          names->InsertNextValue(meshName);
           std::size_t it2Cnt(0);
           for(std::vector< MEDFileFieldRepresentationLeaves >::const_iterator it2=(*it1).begin();it2!=(*it1).end();it2++,it2Cnt++)
             {
               std::ostringstream oss2; oss2 << MEDFileFieldRepresentationLeavesArrays::COM_SUP_STR << it2Cnt;
               std::string comSupStr(oss2.str());
-              vtkIdType typeId2(sil->AddChild(typeId1,edge));
-              names.push_back(comSupStr);
-              (*it2).feedSIL(_ms,meshName,sil,typeId2,edge,names);
+              vtkIdType typeId2(sil->AddChild(typeId1));
+              names->InsertNextValue(comSupStr);
+              (*it2).feedSIL(_ms,meshName,sil,typeId2,names);
             } 
         }
     }
@@ -1068,49 +1067,60 @@ std::string MEDFileFieldRepresentationTree::getActiveMeshName() const
   return leaf.getMeshName();
 }
 
-std::string MEDFileFieldRepresentationTree::feedSILForFamsAndGrps(vtkMutableDirectedGraph* sil, vtkIdType root, vtkVariantArray *edge, std::vector<std::string>& names) const
+namespace
+{
+  class MCFamGroupFeeder
+  {
+  public:
+    MCFamGroupFeeder( const MEDFileMeshes *ms, const std::string& selectedMeshName )
+    {
+      int i(0);
+      for(;i<ms->getNumberOfMeshes();i++)
+        {
+          _mesh = ms->getMeshAtPos(i);
+          if( _mesh->getName() == selectedMeshName )
+            break;
+        }
+      if(i == ms->getNumberOfMeshes())
+        throw INTERP_KERNEL::Exception("MEDFileFieldRepresentationTree::feedSILForFamsAndGrps : internal error #0 !");
+    }
+    std::string getName() const
+    {
+      return _mesh->getName();
+    }
+    
+    std::vector<std::string> getGroupsNames() const
+    {
+      return _mesh->getGroupsNames();
+    }
+    
+    std::vector<std::string> getFamiliesNames() const
+    {
+      return _mesh->getFamiliesNames();
+    }
+    
+    std::vector<std::string> getFamiliesOnGroup(const std::string& grp) const
+    {
+      return _mesh->getFamiliesOnGroup( grp );
+    }
+    
+    int getFamilyId( const std::string &famName ) const
+    {
+      return _mesh->getFamilyId( famName );
+    }
+  private:
+    MEDFileMesh *_mesh = nullptr;
+  };
+}
+
+std::string MEDFileFieldRepresentationTree::feedSILForFamsAndGrps(vtkMutableDirectedGraph* sil, vtkIdType root, vtkStringArray *names) const
 {
   int dummy0(0),dummy1(0),dummy2(0);
   const MEDFileFieldRepresentationLeaves& leaf(getTheSingleActivated(dummy0,dummy1,dummy2));
-  std::string ret(leaf.getMeshName());
-  int i(0);
-  MEDFileMesh *m(0);
-  for(;i<_ms->getNumberOfMeshes();i++)
-    {
-      m=_ms->getMeshAtPos(i);
-      if(m->getName()==ret)
-        break;
-    }
-  if(i==_ms->getNumberOfMeshes())
-    throw INTERP_KERNEL::Exception("MEDFileFieldRepresentationTree::feedSILForFamsAndGrps : internal error #0 !");
-  vtkIdType typeId0(sil->AddChild(root,edge));
-  names.push_back(m->getName());
   //
-  vtkIdType typeId1(sil->AddChild(typeId0,edge));
-  names.push_back(std::string(ROOT_OF_GRPS_IN_TREE));
-  std::vector<std::string> grps(m->getGroupsNames());
-  for(std::vector<std::string>::const_iterator it0=grps.begin();it0!=grps.end();it0++)
-    {
-      vtkIdType typeId2(sil->AddChild(typeId1,edge));
-      names.push_back(*it0);
-      std::vector<std::string> famsOnGrp(m->getFamiliesOnGroup((*it0).c_str()));
-      for(std::vector<std::string>::const_iterator it1=famsOnGrp.begin();it1!=famsOnGrp.end();it1++)
-        {
-          sil->AddChild(typeId2,edge);
-          names.push_back((*it1).c_str());
-        }
-    }
-  //
-  vtkIdType typeId11(sil->AddChild(typeId0,edge));
-  names.push_back(std::string(ROOT_OF_FAM_IDS_IN_TREE));
-  std::vector<std::string> fams(m->getFamiliesNames());
-  for(std::vector<std::string>::const_iterator it00=fams.begin();it00!=fams.end();it00++)
-    {
-      sil->AddChild(typeId11,edge);
-      int famId(m->getFamilyId((*it00).c_str()));
-      std::ostringstream oss; oss << (*it00) << MEDFileFieldRepresentationLeavesArrays::ZE_SEP << famId;
-      names.push_back(oss.str());
-    }
+  std::string ret( leaf.getMeshName() );
+  MCFamGroupFeeder feeder( _ms, ret );
+  FeedSILForFamsAndGrps<MCFamGroupFeeder>(feeder, sil, root, names);
   return ret;
 }
 

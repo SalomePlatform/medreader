@@ -215,6 +215,115 @@ public:
 private:
   vtkDataSet *_ds;
 };
+
+namespace
+{
+  int RequestDataSingle( vtkMultiBlockDataSet *output, vtkDataSet *input, const std::set<int>& idsToKeep, int insideOut, vtkAlgorithm *extractGroupFilter )
+  {
+    // first shrink the input
+    bool catchAll,catchSmth;
+    vtkSmartPointer<vtkThreshold> thres1(vtkSmartPointer<vtkThreshold>::New()),thres2(vtkSmartPointer<vtkThreshold>::New());
+    vtkDataSet *tryOnCell(FilterFamilies<CellExtractor>(thres1,input,idsToKeep,insideOut,
+                                                        MEDFileFieldRepresentationLeavesArrays::FAMILY_ID_CELL_NAME,"vtkDataObject::FIELD_ASSOCIATION_CELLS",catchAll,catchSmth));
+    if(tryOnCell)
+      {
+        if(catchAll)
+          {
+            output->SetBlock(0,tryOnCell);
+            tryOnCell->Delete();//
+            return 1;
+          }
+        else
+          {
+            if(catchSmth)
+              {
+                vtkDataSet *tryOnNode(FilterFamilies<PointExtractor>(thres2,input,idsToKeep,insideOut,
+                                                                      MEDFileFieldRepresentationLeavesArrays::FAMILY_ID_NODE_NAME,"vtkDataObject::FIELD_ASSOCIATION_POINTS",catchAll,catchSmth));
+                if(tryOnNode && catchSmth)
+                  {
+                    output->SetBlock(0,tryOnCell);
+                    output->SetBlock(1,tryOnNode);
+                    tryOnCell->Delete();
+                    tryOnNode->Delete();
+                    return 1;
+                  }
+                else
+                  {
+                    if(tryOnNode)
+                      tryOnNode->Delete();
+                    output->SetBlock(0,tryOnCell);
+                    tryOnCell->Delete();
+                    return 1;
+                  }
+              }
+            else
+              {
+                vtkDataSet *tryOnNode(FilterFamilies<PointExtractor>(thres1,input,idsToKeep,insideOut,
+                                                                      MEDFileFieldRepresentationLeavesArrays::FAMILY_ID_NODE_NAME,"vtkDataObject::FIELD_ASSOCIATION_POINTS",catchAll,catchSmth));
+                if(tryOnNode)
+                  {
+                    tryOnCell->Delete();
+                    output->SetBlock(0,tryOnNode);
+                    tryOnNode->Delete();
+                    return 1;
+                  }
+                else
+                  {
+                    output->SetBlock(0,tryOnNode);
+                    tryOnCell->Delete();
+                    return 0;
+                  }
+              }
+          }
+      }
+    else
+      {
+        vtkDataSet *tryOnNode(FilterFamilies<PointExtractor>(thres1,input,idsToKeep,insideOut,
+                                                              MEDFileFieldRepresentationLeavesArrays::FAMILY_ID_NODE_NAME,"vtkDataObject::FIELD_ASSOCIATION_POINTS",catchAll,catchSmth));
+        if(tryOnNode)
+          {
+            output->ShallowCopy(tryOnNode);
+            tryOnNode->Delete();//
+            return 1;
+          }
+        else
+          {
+            std::ostringstream oss; oss << "vtkExtractGroup::RequestData : The integer array with name \""<< MEDFileFieldRepresentationLeavesArrays::FAMILY_ID_CELL_NAME;
+            oss << "\" or \"" << MEDFileFieldRepresentationLeavesArrays::FAMILY_ID_NODE_NAME << "\" does not exist ! The extraction of group and/or family is not possible !";
+            if(extractGroupFilter->HasObserver("ErrorEvent") )
+              extractGroupFilter->InvokeEvent("ErrorEvent",const_cast<char *>(oss.str().c_str()));
+            else
+              vtkOutputWindowDisplayErrorText(const_cast<char *>(oss.str().c_str()));
+            vtkObject::BreakOnError();
+            return 0;
+          }
+      }
+
+  }
+
+  enum class ExtractGroupMode
+  {
+    SingleBlockMode,
+    MultiBlockMode
+  };
+
+
+  ExtractGroupMode GetMode( vtkMultiBlockDataSet *input, ExtractGroupInternal *internal, vtkAlgorithm *extractGroupFilter )
+  {
+    auto nbBlocks( input->GetNumberOfBlocks() );
+    if( nbBlocks == 1 )
+      return ExtractGroupMode::SingleBlockMode;
+    if( nbBlocks > 1 )
+    {
+      if( internal->isMultiMode( nbBlocks ) )
+      {
+        return ExtractGroupMode::MultiBlockMode;
+      }
+    }
+    throw INTERP_KERNEL::Exception( "vtkExtractGroup::RequestData : input has not the right number of parts ! Expected 1 !" );
+  }
+}
+
 int vtkExtractGroup::RequestData(vtkInformation * /*request*/, vtkInformationVector **inputVector, vtkInformationVector *outputVector)
 {
   try
@@ -223,106 +332,60 @@ int vtkExtractGroup::RequestData(vtkInformation * /*request*/, vtkInformationVec
       // request->Print(cout);
       vtkInformation* inputInfo=inputVector[0]->GetInformationObject(0);
       vtkMultiBlockDataSet *inputMB(vtkMultiBlockDataSet::SafeDownCast(inputInfo->Get(vtkDataObject::DATA_OBJECT())));
-      if(inputMB->GetNumberOfBlocks()!=1)
-        {
-          std::ostringstream oss; oss << "vtkExtractGroup::RequestData : input has not the right number of parts ! Expected 1 !";
-          if(this->HasObserver("ErrorEvent") )
-            this->InvokeEvent("ErrorEvent",const_cast<char *>(oss.str().c_str()));
-          else
-            vtkOutputWindowDisplayErrorText(const_cast<char *>(oss.str().c_str()));
-          vtkObject::BreakOnError();
-          return 0;
-        }
-      vtkDataSet *input(vtkDataSet::SafeDownCast(inputMB->GetBlock(0)));
-      //vtkInformation *info(input->GetInformation()); // todo: unused
       vtkInformation *outInfo(outputVector->GetInformationObject(0));
       vtkMultiBlockDataSet *output(vtkMultiBlockDataSet::SafeDownCast(outInfo->Get(vtkDataObject::DATA_OBJECT())));
-      std::set<int> idsToKeep(this->Internal->getIdsToKeep());
-      this->Internal->clearSelection();
-      // first shrink the input
-      bool catchAll,catchSmth;
-      vtkSmartPointer<vtkThreshold> thres1(vtkSmartPointer<vtkThreshold>::New()),thres2(vtkSmartPointer<vtkThreshold>::New());
-      vtkDataSet *tryOnCell(FilterFamilies<CellExtractor>(thres1,input,idsToKeep,this->InsideOut,
-                                                          MEDFileFieldRepresentationLeavesArrays::FAMILY_ID_CELL_NAME,"vtkDataObject::FIELD_ASSOCIATION_CELLS",catchAll,catchSmth));
-      if(tryOnCell)
+      switch( GetMode( inputMB, this->Internal, this ) )
+      {
+      case ExtractGroupMode::SingleBlockMode:
+      {
+        vtkDataSet *input(vtkDataSet::SafeDownCast(inputMB->GetBlock(0)));
+        //vtkInformation *info(input->GetInformation()); // todo: unused
+        std::set<int> idsToKeep(this->Internal->getIdsToKeep());
+        this->Internal->clearSelection();
+        return RequestDataSingle( output, input, idsToKeep, this->InsideOut, this );
+      }
+      case ExtractGroupMode::MultiBlockMode:
+      {
+        unsigned int nbBlocks( inputMB->GetNumberOfBlocks() );
+        unsigned int iBlockTotal(0);
+        for( unsigned int iBlock = 0 ; iBlock < nbBlocks ; ++iBlock )
         {
-          if(catchAll)
-            {
-              output->SetBlock(0,tryOnCell);
-              tryOnCell->Delete();//
-              return 1;
-            }
-          else
-            {
-              if(catchSmth)
-                {
-                  vtkDataSet *tryOnNode(FilterFamilies<PointExtractor>(thres2,input,idsToKeep,this->InsideOut,
-                                                                       MEDFileFieldRepresentationLeavesArrays::FAMILY_ID_NODE_NAME,"vtkDataObject::FIELD_ASSOCIATION_POINTS",catchAll,catchSmth));
-                  if(tryOnNode && catchSmth)
-                    {
-                      output->SetBlock(0,tryOnCell);
-                      output->SetBlock(1,tryOnNode);
-                      tryOnCell->Delete();
-                      tryOnNode->Delete();
-                      return 1;
-                    }
-                  else
-                    {
-                      if(tryOnNode)
-                        tryOnNode->Delete();
-                      output->SetBlock(0,tryOnCell);
-                      tryOnCell->Delete();
-                      return 1;
-                    }
-                }
-              else
-                {
-                  vtkDataSet *tryOnNode(FilterFamilies<PointExtractor>(thres1,input,idsToKeep,this->InsideOut,
-                                                                       MEDFileFieldRepresentationLeavesArrays::FAMILY_ID_NODE_NAME,"vtkDataObject::FIELD_ASSOCIATION_POINTS",catchAll,catchSmth));
-                  if(tryOnNode)
-                    {
-                      tryOnCell->Delete();
-                      output->SetBlock(0,tryOnNode);
-                      tryOnNode->Delete();
-                      return 1;
-                    }
-                  else
-                    {
-                      output->SetBlock(0,tryOnNode);
-                      tryOnCell->Delete();
-                      return 0;
-                    }
-                }
-            }
+          vtkNew<vtkMultiBlockDataSet> partOutput;
+          vtkDataSet *input(vtkDataSet::SafeDownCast(inputMB->GetBlock(iBlock)));
+          std::set<int> idsToKeep(this->Internal->getIdsToKeepMulti( iBlock ));
+          if( idsToKeep.empty() )
+          {
+            continue;
+          }
+          if( RequestDataSingle( partOutput, input, idsToKeep, this->InsideOut, this ) != 1 )
+          {
+            THROW_IK_EXCEPTION( "vtkExtractGroup::RequestData : Problem with part #" << iBlock );
+          }
+          unsigned int nbBlocksTmp( partOutput->GetNumberOfBlocks() );
+          for( unsigned int iBlockTmp = 0 ; iBlockTmp < nbBlocksTmp ; ++iBlockTmp )
+          {
+            output->SetBlock( iBlockTotal++, partOutput->GetBlock(iBlockTmp) );
+          }
         }
-      else
-        {
-          vtkDataSet *tryOnNode(FilterFamilies<PointExtractor>(thres1,input,idsToKeep,this->InsideOut,
-                                                               MEDFileFieldRepresentationLeavesArrays::FAMILY_ID_NODE_NAME,"vtkDataObject::FIELD_ASSOCIATION_POINTS",catchAll,catchSmth));
-          if(tryOnNode)
-            {
-              output->ShallowCopy(tryOnNode);
-              tryOnNode->Delete();//
-              return 1;
-            }
-          else
-            {
-              std::ostringstream oss; oss << "vtkExtractGroup::RequestData : The integer array with name \""<< MEDFileFieldRepresentationLeavesArrays::FAMILY_ID_CELL_NAME;
-              oss << "\" or \"" << MEDFileFieldRepresentationLeavesArrays::FAMILY_ID_NODE_NAME << "\" does not exist ! The extraction of group and/or family is not possible !";
-              if(this->HasObserver("ErrorEvent") )
-                this->InvokeEvent("ErrorEvent",const_cast<char *>(oss.str().c_str()));
-              else
-                vtkOutputWindowDisplayErrorText(const_cast<char *>(oss.str().c_str()));
-              vtkObject::BreakOnError();
-              return 0;
-            }
-        }
+        return 1;
+      }
+      default:
+      {
+        throw INTERP_KERNEL::Exception( "vtkExtractGroup::RequestData : not recognized mode !" );
+      }
     }
+  }
   catch(INTERP_KERNEL::Exception& e)
-    {
-      std::cerr << "Exception has been thrown in vtkExtractGroup::RequestData : " << e.what() << std::endl;
-      return 0;
-    }
+  {
+    //vtkOutputWindowDisplayErrorText
+    std::ostringstream oss; oss << "vtkExtractGroup::RequestData : exception with content : " << e.what();
+    if(this->HasObserver("ErrorEvent") )
+      this->InvokeEvent("ErrorEvent",const_cast<char *>(oss.str().c_str()));
+    else
+      vtkOutputWindowDisplayErrorText(const_cast<char *>(oss.str().c_str()));
+    vtkObject::BreakOnError();
+    return 0;
+  }
 }
 
 int vtkExtractGroup::GetSILUpdateStamp()
@@ -376,5 +439,5 @@ void vtkExtractGroup::SetGroupsFlagsStatus(const char *name, int status)
 
 const char *vtkExtractGroup::GetMeshName()
 {
-  return this->Internal->getMeshName();
+  return this->Internal->getMeshNameYellowSubmarine();
 }

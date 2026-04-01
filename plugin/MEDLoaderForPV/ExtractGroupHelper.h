@@ -20,6 +20,8 @@
 
 #pragma once
 
+#include <vtkType.h>
+
 #include <sstream>
 #include <vector>
 #include <set>
@@ -62,6 +64,7 @@ class MEDLOADERFORPV_EXPORT ExtractGroupFam : public ExtractGroupStatus
 {
 public:
   ExtractGroupFam(const char *name);
+  static std::string FromFamInfoToEntry( const std::string& famName, int famId );
   void printMySelf(std::ostream& os) const;
   void fillIdsToKeep(std::set<int>& s) const;
   int getId() const { return _id; }
@@ -72,33 +75,64 @@ private:
   int _id;
 };
 
-class vtkInformationDataObjectMetaDataKey;
 class vtkMutableDirectedGraph;
+class vtkStringArray;
+
+class MEDLOADERFORPV_EXPORT ExtractGroupData
+{
+public:
+  static vtkIdType LocateFamGroupsTreeTopVertexInSIL(vtkMutableDirectedGraph *sil, vtkIdType *idMeshesFamsGrpsMulti = nullptr);
+  void fuseForAggregated( const std::vector< ExtractGroupData >& egds );
+  void loadFromSingle(vtkMutableDirectedGraph *sil, vtkStringArray *verticesNames, vtkIdType vertexIdOfMeshesFamsGrps);
+  const char *getMeshNameYellowSubmarine() const;
+  std::string getMeshName() const { return _mesh_name; }
+  int getNumberOfEntries() const;
+  const char *getKeyOfEntry(int i) const;
+  const ExtractGroupStatus *getEntryNoThrow(const char *entry) const;
+  const ExtractGroupStatus& getEntry(const char *entry) const;
+  ExtractGroupStatus& getEntry(const char *entry);
+  void printMySelf(std::ostream& os) const;
+  int getIdOfFamily(const std::string& famName) const;
+  std::set<int> getIdsHighlighted() const;
+  std::vector< std::pair<std::string,std::vector<int> > > getAllGroups() const;
+  std::vector<std::string> getGroupsNames() const;
+  std::vector<std::string> getFamiliesNames() const;
+  std::vector<std::string> getFamiliesOnGroup(const std::string& grpName) const;
+  int getFamilyId( const std::string& famName ) const;
+  void clearSelection() const;
+private:
+  std::map<std::string,int> computeFamStrIdMap() const;
+private:
+  std::vector<ExtractGroupGrp> _groups;
+  std::vector<ExtractGroupFam> _fams;
+  std::string _mesh_name;
+};
+
+class vtkInformationDataObjectMetaDataKey;
 class vtkInformation;
 
 class MEDLOADERFORPV_EXPORT ExtractGroupInternal
 {
 public:
   void loadFrom(vtkMutableDirectedGraph *sil);
-  int getNumberOfEntries() const;
-  const char *getMeshName() const;
-  const char *getKeyOfEntry(int i) const;
+  void loadFromSingle(vtkMutableDirectedGraph *sil, vtkStringArray *verticesNames, vtkIdType vertexIdOfMeshesFamsGrps);
+  void loadFromMultiple(vtkMutableDirectedGraph *sil, vtkStringArray *verticesNames, vtkIdType idMeshesFamsGrpsMulti);
+  int getNumberOfEntries() const { return _data.getNumberOfEntries(); }
+  //! Warning : supposed to be const char * steady for paraview
+  const char *getMeshNameYellowSubmarine() const;
+  const char *getKeyOfEntry(int i) const { return _data.getKeyOfEntry(i); }
   bool getStatusOfEntryStr(const char *entry) const;
   void setStatusOfEntryStr(const char *entry, bool status);
-  void printMySelf(std::ostream& os) const;
+  void printMySelf(std::ostream& os) const { _data.printMySelf(os); }
+  bool isMultiMode( unsigned int nbBlock ) const;
   std::set<int> getIdsToKeep() const;
-  std::vector< std::pair<std::string,std::vector<int> > > getAllGroups() const;
+  std::set<int> getIdsToKeepMulti( unsigned int iBlock ) const;
   void clearSelection() const;
-  int getIdOfFamily(const std::string& famName) const;
+  int getIdOfFamily(const std::string& famName) const { return _data.getIdOfFamily( famName ); }
+  std::vector< std::pair<std::string,std::vector<int> > > getAllGroups() const { return _data.getAllGroups(); }
   static bool IndependantIsInformationOK(vtkInformationDataObjectMetaDataKey *medReaderMetaData, vtkInformation *info);
 private:
-  std::map<std::string,int> computeFamStrIdMap() const;
-  const ExtractGroupStatus& getEntry(const char *entry) const;
-  ExtractGroupStatus& getEntry(const char *entry);
-private:
-  std::vector<ExtractGroupGrp> _groups;
-  std::vector<ExtractGroupFam> _fams;
+  ExtractGroupData _data;
+  std::vector< ExtractGroupData > _data_multi;
   mutable std::vector< std::pair<std::string,bool> > _selection;
-  std::string _mesh_name;
 };
-

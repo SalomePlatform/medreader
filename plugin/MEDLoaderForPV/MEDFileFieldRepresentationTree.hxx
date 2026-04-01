@@ -36,6 +36,7 @@ class vtkUnstructuredGrid;
 class vtkRectilinearGrid;
 class vtkStructuredGrid;
 class vtkVariantArray;
+class vtkStringArray;
 class vtkIdTypeArray;
 class vtkDoubleArray;
 class vtkDataArray;
@@ -73,7 +74,7 @@ public:
   MEDFileFieldRepresentationLeavesArrays& operator=(const MEDFileFieldRepresentationLeavesArrays& other);
   int getId() const;
   void setId(int& id) const;
-  void feedSIL(vtkMutableDirectedGraph* sil, vtkIdType root, vtkVariantArray *edge, std::vector<std::string>& names) const;
+  void feedSIL(vtkMutableDirectedGraph* sil, vtkIdType root, vtkStringArray *names) const;
   void computeFullNameInLeaves(const std::string& tsName, const std::string& meshName, const std::string& comSupStr) const;
   bool getStatus() const;
   bool setStatus(bool status) const;
@@ -110,7 +111,7 @@ public:
   std::string getMeshName() const;
   int getNumberOfArrays() const;
   int getNumberOfTS() const;
-  void feedSIL(const MEDCoupling::MEDFileMeshes *ms, const std::string& meshName, vtkMutableDirectedGraph* sil, vtkIdType root, vtkVariantArray *edge, std::vector<std::string>& names) const;
+  void feedSIL(const MEDCoupling::MEDFileMeshes *ms, const std::string& meshName, vtkMutableDirectedGraph* sil, vtkIdType root, vtkStringArray *names) const;
   void computeFullNameInLeaves(const std::string& tsName, const std::string& meshName, const std::string& comSupStr) const;
   bool containId(int id) const;
   bool containZeName(const char *name, int& id) const;
@@ -142,9 +143,9 @@ public:
   void assignIds() const;
   void activateTheFirst() const;
   void computeFullNameInLeaves() const;
-  void feedSIL(vtkMutableDirectedGraph* sil, vtkIdType root, vtkVariantArray *edge, std::vector<std::string>& names) const;
+  void feedSIL(vtkMutableDirectedGraph* sil, vtkIdType root, vtkStringArray *names) const;
   std::string getActiveMeshName() const;
-  std::string feedSILForFamsAndGrps(vtkMutableDirectedGraph* sil, vtkIdType root, vtkVariantArray *edge, std::vector<std::string>& names) const;
+  std::string feedSILForFamsAndGrps(vtkMutableDirectedGraph* sil, vtkIdType root, vtkStringArray *names) const;
   std::string getNameOf(int id) const;
   const char *getNameOfC(int id) const;
   bool getStatusOf(int id) const;
@@ -165,8 +166,6 @@ public:
   static bool IsFieldMeshRegardingInfo(const std::vector<std::string>& compInfos);
   static std::string PostProcessFieldName(const std::string& fullFieldName);
 public:
-  static const char ROOT_OF_GRPS_IN_TREE[];
-  static const char ROOT_OF_FAM_IDS_IN_TREE[];
   static const char COMPO_STR_TO_LOCATE_MESH_DA[];
 private:
   const MEDFileFieldRepresentationLeavesArrays& getLeafArr(int id) const;

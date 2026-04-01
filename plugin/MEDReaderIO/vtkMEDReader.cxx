@@ -47,6 +47,8 @@
 #include "vtkUnsignedCharArray.h"
 #include "vtkUnstructuredGrid.h"
 #include "vtkVariantArray.h"
+#include "vtkTree.h"
+#include "vtkTreeBFSIterator.h"
 
 #ifdef MEDREADER_USE_MPI
 #include "vtkMultiProcessController.h"
@@ -54,6 +56,8 @@
 #endif
 
 #include "MEDFileFieldRepresentationTree.hxx"
+#include "MEDReaderAndFileSeriesGateway.hxx"
+#include "MEDReaderCommon.hxx"
 
 #include <map>
 #include <string>
@@ -61,11 +65,42 @@
 #include <sstream>
 #include <algorithm>
 
+namespace
+{
+  /*!
+   * The returned string is the name of the mesh activated which groups and families are in \a sil.
+   */
+  std::string BuildSIL(const MEDFileFieldRepresentationTree& tree, vtkMutableDirectedGraph *sil)
+  {
+    sil->Initialize();
+    // CrossEdge is an edge linking hierarchies.
+    vtkNew<vtkStringArray> crossEdgesArray;
+    sil->GetEdgeData()->AddArray(crossEdgesArray);
+    // This array is used to assign names to nodes.
+    vtkNew<vtkStringArray> namesArray;
+    namesArray->SetName("Names");
+    sil->GetVertexData()->AddArray(namesArray);
+    // Now build the hierarchy.
+    vtkIdType rootId=sil->AddVertex();
+    namesArray->InsertNextValue("SIL");
+    // Add global fields root
+    vtkIdType fieldsRoot(sil->AddChild(rootId));
+    namesArray->InsertNextValue("FieldsStatusTree");
+    tree.feedSIL(sil,fieldsRoot,namesArray);
+    vtkIdType meshesFamsGrpsRoot(sil->AddChild(rootId));
+    namesArray->InsertNextValue( MESHES_FAMS_GROUPS );
+    std::string dftMeshName(tree.feedSILForFamsAndGrps(sil,meshesFamsGrpsRoot,namesArray));
+    namesArray->InsertNextValue( MESHES_FAMS_GROUPS_MULTI );
+    sil->AddChild(rootId);
+    return dftMeshName;
+  }
+}
+
 class vtkMEDReader::vtkMEDReaderInternal
 {
 
 public:
-  vtkMEDReaderInternal(vtkMEDReader *master):TK(0),SIL(0),LastLev0(-1)
+  vtkMEDReaderInternal(vtkMEDReader *master):TK(0),SIL(nullptr),LastLev0(-1),Callback(nullptr),CollectionForCallback(nullptr)
   {
   }
 
@@ -74,15 +109,34 @@ public:
     if(this->SIL)
       this->SIL->Delete();
   }
+
+  void UpdateSIL()
+  {
+    std::string meshName(this->Tree.getActiveMeshName());
+    if(!this->SIL || meshName!=this->DftMeshName)
+      {
+        vtkMutableDirectedGraph *sil(vtkMutableDirectedGraph::New());
+        BuildSIL(this->Tree, sil);
+        if(this->SIL)
+          this->SIL->Delete();
+        this->SIL=sil;
+        this->DftMeshName=meshName;
+      }
+  }
+
 public:
   MEDFileFieldRepresentationTree Tree;
   TimeKeeper TK;
 
   std::string DftMeshName;
   // Store the vtkMutableDirectedGraph that represents links between family, groups and cell types
-  vtkMutableDirectedGraph* SIL;
+  vtkMutableDirectedGraph *SIL;
   // store the lev0 id in Tree corresponding to the TIME_STEPS in the pipeline.
   int LastLev0;
+
+  // pair used to feed in case of aggregation mode info in SIL coming from brothers' SIL
+  CallbackWrapper *Callback;
+  vtkCollection *CollectionForCallback;
 };
 
 vtkStandardNewMacro(vtkMEDReader)
@@ -130,7 +184,7 @@ vtkMEDReader::vtkMEDReader():Internal(new vtkMEDReaderInternal(this))
 vtkMEDReader::~vtkMEDReader()
 {
   delete this->Internal;
-  this->Internal = 0;
+  this->Internal = nullptr;
 }
 
 void vtkMEDReader::Reload()
@@ -307,7 +361,14 @@ int vtkMEDReader::RequestInformation(vtkInformation *request, vtkInformationVect
 //      request->Print(cout);
       vtkInformation *outInfo(outputVector->GetInformationObject(0));
       outInfo->Set(vtkDataObject::DATA_TYPE_NAME(),"vtkMultiBlockDataSet");
-      this->UpdateSIL(request, outInfo);
+      if( this->Internal )
+      {
+        this->Internal->UpdateSIL( );
+        if( this->Internal->Callback )
+        {// called in case of aggregated mode of vtkFileSeriesGroupReader and this is exposedReader into the pipeline
+          this->Internal->Callback->func( this->Internal->SIL, this->Internal->CollectionForCallback );
+        }
+      }
 
       // Set the meta data graph as a meta data key in the information
       // That's all that is needed to transfer it along the pipeline
@@ -393,7 +454,8 @@ int vtkMEDReader::RequestData(vtkInformation *request, vtkInformationVector ** /
         }
       output->GetInformation()->Set(vtkDataObject::DATA_TIME_STEP(),reqTS);
       // Is it really needed ? TODO
-      this->UpdateSIL(request, outInfo);
+      if( this->Internal )
+        this->Internal->UpdateSIL();
     }
   catch(INTERP_KERNEL::Exception& e)
     {
@@ -480,63 +542,6 @@ void vtkMEDReader::SetTimesFlagsStatus(const char* name, int status)
   }
 }
 
-void vtkMEDReader::UpdateSIL(vtkInformation* /*request*/, vtkInformation * /*info*/)
-{
-  if(!this->Internal)
-      return;
-  std::string meshName(this->Internal->Tree.getActiveMeshName());
-  if(!this->Internal->SIL || meshName!=this->Internal->DftMeshName)
-    {
-      vtkMutableDirectedGraph *sil(vtkMutableDirectedGraph::New());
-      this->BuildSIL(sil);
-      if(this->Internal->SIL)
-        this->Internal->SIL->Delete();
-      this->Internal->SIL=sil;
-      this->Internal->DftMeshName=meshName;
-    }
-}
-
-/*!
- * The returned string is the name of the mesh activated which groups and families are in \a sil.
- */
-std::string vtkMEDReader::BuildSIL(vtkMutableDirectedGraph* sil)
-{
-  if (!this->Internal)
-    return std::string();
-  sil->Initialize();
-  vtkSmartPointer<vtkVariantArray> childEdge(vtkSmartPointer<vtkVariantArray>::New());
-  childEdge->InsertNextValue(0);
-  vtkSmartPointer<vtkVariantArray> crossEdge(vtkSmartPointer<vtkVariantArray>::New());
-  crossEdge->InsertNextValue(1);
-  // CrossEdge is an edge linking hierarchies.
-  vtkUnsignedCharArray* crossEdgesArray=vtkUnsignedCharArray::New();
-  crossEdgesArray->SetName("CrossEdges");
-  sil->GetEdgeData()->AddArray(crossEdgesArray);
-  crossEdgesArray->Delete();
-  std::vector<std::string> names;
-  // Now build the hierarchy.
-  vtkIdType rootId=sil->AddVertex();
-  names.push_back("SIL");
-  // Add global fields root
-  vtkIdType fieldsRoot(sil->AddChild(rootId,childEdge));
-  names.push_back("FieldsStatusTree");
-  this->Internal->Tree.feedSIL(sil,fieldsRoot,childEdge,names);
-  vtkIdType meshesFamsGrpsRoot(sil->AddChild(rootId,childEdge));
-  names.push_back("MeshesFamsGrps");
-  std::string dftMeshName(this->Internal->Tree.feedSILForFamsAndGrps(sil,meshesFamsGrpsRoot,childEdge,names));
-  // This array is used to assign names to nodes.
-  vtkStringArray *namesArray(vtkStringArray::New());
-  namesArray->SetName("Names");
-  namesArray->SetNumberOfTuples(sil->GetNumberOfVertices());
-  sil->GetVertexData()->AddArray(namesArray);
-  namesArray->Delete();
-  std::vector<std::string>::const_iterator iter;
-  vtkIdType cc;
-  for(cc=0, iter=names.begin(); iter!=names.end(); ++iter, ++cc)
-    namesArray->SetValue(cc,(*iter).c_str());
-  return dftMeshName;
-}
-
 double vtkMEDReader::PublishTimeStepsIfNeeded(vtkInformation *outInfo, bool& isUpdated)
 {
   if(!this->Internal)
@@ -555,7 +560,7 @@ double vtkMEDReader::PublishTimeStepsIfNeeded(vtkInformation *outInfo, bool& isU
       double timeRange[2];
       timeRange[0]=tsteps.front();
       timeRange[1]=tsteps.back();
-      outInfo->Set(vtkStreamingDemandDrivenPipeline::TIME_STEPS(),&tsteps[0],(int)tsteps.size());
+      outInfo->Set(vtkStreamingDemandDrivenPipeline::TIME_STEPS(),tsteps.data(),(int)tsteps.size());
       outInfo->Set(vtkStreamingDemandDrivenPipeline::TIME_RANGE(),timeRange,2);
       this->Internal->LastLev0=lev0;
     }
@@ -574,7 +579,7 @@ void vtkMEDReader::FillMultiBlockDataSetInstance(vtkMultiBlockDataSet *output, d
 vtkDataSet *vtkMEDReader::RetrieveDataSetAtTime(double reqTS, ExportedTinyInfo *internalInfo)
 {
   if( !this->Internal )
-    return 0;
+    return nullptr;
   std::string meshName;
   vtkDataSet *ret(this->Internal->Tree.buildVTKInstance(this->IsStdOrMode,reqTS,meshName,this->Internal->TK,!this->RemoveDebugArrays,internalInfo));
   if(this->GenerateVect)
@@ -587,6 +592,22 @@ vtkDataSet *vtkMEDReader::RetrieveDataSetAtTime(double reqTS, ExportedTinyInfo *
       //vtkGenerateVectors::ChangeMeshTimeToUpdateCache(ret);
     }
   return ret;
+}
+
+vtkMutableDirectedGraph *vtkMEDReader::GetSIL()
+{
+  if( !this->Internal )
+    return nullptr;
+  return this->Internal->SIL;
+}
+
+void vtkMEDReader::setSILCallback( void *function, vtkCollection *collection )
+{
+  if( this->Internal )
+  {
+    this->Internal->Callback = static_cast<CallbackWrapper*>( function );
+    this->Internal->CollectionForCallback = collection;
+  }
 }
 
 void vtkMEDReader::PrintSelf(ostream& os, vtkIndent indent)
