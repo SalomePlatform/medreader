@@ -62,13 +62,13 @@ if(TARGET VTK::Python)
   vtk_module_wrap_python(
     MODULES         MEDReaderIO
     WRAPPED_MODULES medr_wrapped_modules
-    TARGET          MEDREADER::Python
+    TARGET          MEDREADER::WrappablePython
     INSTALL_EXPORT  MEDReaderVTKPython
     PYTHON_PACKAGE  "MEDReaderVTK"
     MODULE_DESTINATION  "${python_destination}"
     CMAKE_DESTINATION   "${CMAKE_INSTALL_LIBDIR}/cmake/MEDReaderVTKPython"
     LIBRARY_DESTINATION "${CMAKE_INSTALL_LIBDIR}"
-    INSTALL_HEADERS ON
+    INSTALL_HEADERS OFF
     BUILD_STATIC    OFF)
 
   # Generate __init__.py
