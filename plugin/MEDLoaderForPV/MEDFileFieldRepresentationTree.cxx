@@ -28,7 +28,7 @@
 #include "MEDCouplingFieldDouble.hxx"
 #include "InterpKernelGaussCoords.hxx"
 #include "MEDFileData.hxx"
-#include "MEDCouplingMemArray.txx"
+#include "MEDCouplingMemArray.hxx"
 
 #ifdef MEDREADER_USE_MPI
   #include "ParaMEDFileMesh.hxx"
