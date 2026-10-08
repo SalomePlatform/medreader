@@ -64,8 +64,6 @@ int vtkUgSelectCellIds::RequestData(vtkInformation *vtkNotUsed(request), vtkInfo
   vtkNew<vtkIdTypeArray> outNodalConn;
   vtkNew<vtkUnsignedCharArray> outCellTypes;
   outCellTypes->SetNumberOfComponents(1); outCellTypes->SetNumberOfTuples(outputNbCells);
-  vtkNew<vtkIdTypeArray> outCellLocations;
-  outCellLocations->SetNumberOfComponents(1); outCellLocations->SetNumberOfTuples(outputNbCells);
   vtkIdType outConnLgth(0);
   for( const vtkIdType *cellId = _ids->GetPointer(0) ; cellId != _ids->GetPointer(outputNbCells) ; ++cellId )
   {
@@ -83,12 +81,11 @@ int vtkUgSelectCellIds::RequestData(vtkInformation *vtkNotUsed(request), vtkInfo
     } 
   }
   outNodalConn->SetNumberOfComponents(1); outNodalConn->SetNumberOfTuples(outConnLgth);
-  vtkIdType *outConnPt(outNodalConn->GetPointer(0)),*outCellLocPt(outCellLocations->GetPointer(0));
+  vtkIdType *outConnPt(outNodalConn->GetPointer(0));
   vtkIdType outCurCellLoc = 0;
   unsigned char *outCellTypePt(outCellTypes->GetPointer(0));
   for( const vtkIdType *cellId = _ids->GetPointer(0) ; cellId != _ids->GetPointer(outputNbCells) ; ++cellId )
   {
-      outCellLocPt[0] = outCurCellLoc;
       vtkIdType npts;
       const vtkIdType *pts;
       ds->GetCellPoints(*cellId, npts, pts);
@@ -120,8 +117,8 @@ int vtkUgSelectCellIds::RequestData(vtkInformation *vtkNotUsed(request), vtkInfo
     outPointData->AddArray(outArray);
   }
   //
-  outCellArray->SetCells(outputNbCells,outNodalConn);
-  output->SetCells(outCellTypes,outCellLocations,outCellArray);
+  outCellArray->ImportLegacyFormat(outNodalConn);
+  output->SetCells(outCellTypes,outCellArray);
   //
   return 1;
 }

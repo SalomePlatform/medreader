@@ -1,7 +1,7 @@
 #include "vtkExtractCellType.h"
 
 #include "vtkCell.h"
-#include "vtkCellTypes.h"
+#include "vtkCellTypeUtilities.h"
 #include "vtkCompositeDataSet.h"
 #include "vtkCompositeDataIterator.h"
 #include "vtkDataArraySelection.h"
@@ -29,7 +29,7 @@ void vtkExtractCellType::AppendToGeoTypes(vtkDataSet* dataset)
     vtkCell* cell = dataset->GetCell(i);
 
     // TODO use MEDCoupling CellType API
-    const char* cellType = vtkCellTypes::GetClassNameFromTypeId(cell->GetCellType());
+    const char* cellType = vtkCellTypeUtilities::GetClassNameFromTypeId(cell->GetCellType());
     if (!this->FieldSelection->ArrayExists(cellType))
     {
       this->FieldSelection->AddArray(cellType, false);
@@ -45,7 +45,7 @@ void vtkExtractCellType::SelectIds(vtkDataSet* dataset, vtkIdTypeArray* selArr)
     vtkCell* cell = dataset->GetCell(i);
     
     // TODO use MEDCoupling CellType API
-    const char* cellType = vtkCellTypes::GetClassNameFromTypeId(cell->GetCellType());
+    const char* cellType = vtkCellTypeUtilities::GetClassNameFromTypeId(cell->GetCellType());
 
     // Needed as append to geotypes may not have been done in request information
     // when loading state

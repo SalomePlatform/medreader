@@ -745,7 +745,7 @@ vtkUnstructuredGrid *MEDFileFieldRepresentationLeaves::buildVTKInstanceNoTimeInt
   vtkNew<vtkCellArray> cells;
   vtkNew<vtkIdTypeArray> cells2;
   AssignDataPointerOther<vtkIdTypeArray,DataArrayIdType>(cells2,cellsSafe,cellsSafe->getNbOfElems());
-  cells->SetCells(nbOfCells,cells2);
+  cells->ImportLegacyFormat(cells2);
   if(faceLocationsOffsetSafe.isNotNull())
     {
       vtkNew<vtkIdTypeArray> faceLocationsOffset;
