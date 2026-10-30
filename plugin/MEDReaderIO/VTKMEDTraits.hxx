@@ -23,7 +23,8 @@
 
 class vtkIntArray;
 class vtkLongArray;
-#ifdef WIN32
+// mcIdType (std::int64_t) is "long long" on Windows and macOS, "long" on Linux
+#if defined(WIN32) || defined(__APPLE__)
 class vtkLongLongArray;
 #endif
 class vtkFloatArray;
@@ -46,7 +47,7 @@ public:
 };
 
 template<>
-#ifdef WIN32
+#if defined(WIN32) || defined(__APPLE__)
 class MEDFileVTKTraits<long long>
 #else 
 class MEDFileVTKTraits<long>
@@ -54,7 +55,7 @@ class MEDFileVTKTraits<long>
 #
 {
 public:
-#ifdef WIN32
+#if defined(WIN32) || defined(__APPLE__)
   typedef vtkLongLongArray VtkType;
 #else
   typedef vtkLongArray VtkType;

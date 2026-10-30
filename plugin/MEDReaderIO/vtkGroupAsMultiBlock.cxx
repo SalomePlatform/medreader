@@ -24,6 +24,9 @@
 #include "vtkUgSelectCellIds.h"
 #include "MEDFileFieldRepresentationTree.hxx"
 #include "vtkLongArray.h"
+#if defined(__APPLE__)
+#include "vtkLongLongArray.h" // MEDFileVTKTraits<mcIdType>::VtkType
+#endif
 #include "VTKMEDTraits.hxx"
 
 #include <vtkCellArray.h>

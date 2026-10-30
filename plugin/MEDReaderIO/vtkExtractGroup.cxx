@@ -28,7 +28,7 @@
 #include "vtkAOSDataArrayTemplate.h"
 #include "vtkIntArray.h"
 #include "vtkLongArray.h"
-#ifdef WIN32
+#if defined(WIN32) || defined(__APPLE__)
 #include "vtkLongLongArray.h"
 #endif
 #include "vtkCellData.h"
